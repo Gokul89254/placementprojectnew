@@ -88,23 +88,33 @@ const formatDate = value => {
   return Number.isNaN(date.getTime()) ? String(value).slice(0, 10) : date.toLocaleDateString();
 };
 
-const getLegacyDashboardRecords = async (section) => {
-  const endpointBySection = {
-    students: '/admin/students',
-    companies: '/admin/companies',
-    jobs: '/admin/jobs',
-    applications: '/admin/applications',
-    'pending-applications': '/admin/applications',
-    'shortlisted-applications': '/admin/applications',
-    'selected-students': '/admin/applications'
-  };
-  const response = await API.get(endpointBySection[section]);
+const dashboardSectionEndpoints = {
+  students: '/admin/students',
+  companies: '/admin/companies',
+  jobs: '/admin/jobs',
+  applications: '/admin/applications',
+  'pending-applications': '/admin/applications',
+  'shortlisted-applications': '/admin/applications',
+  'selected-students': '/admin/applications'
+};
+
+const getDashboardSectionRecords = async (section) => {
+  const endpoint = dashboardSectionEndpoints[section];
+  if (!endpoint) throw new Error(`Unknown dashboard section: ${section}`);
+
+  const response = await API.get(endpoint);
   const data = response.data.data;
 
-  if (section === 'students') return data.students;
-  if (section === 'companies') return data.companies;
-  if (section === 'jobs') return data.jobs;
-  if (section === 'applications') return data.applications;
+  let records;
+  if (section === 'students') records = data.students;
+  else if (section === 'companies') records = data.companies;
+  else if (section === 'jobs') records = data.jobs;
+  else records = data.applications;
+
+  if (!Array.isArray(records)) {
+    throw new Error(`The ${endpoint} response did not contain the expected records.`);
+  }
+  if (section === 'applications') return records;
 
   const statusBySection = {
     'pending-applications': 'applied',
@@ -112,8 +122,11 @@ const getLegacyDashboardRecords = async (section) => {
     'selected-students': 'selected'
   };
   const status = statusBySection[section];
-  return data.applications
-    .filter(application => application.status === status)
+  if (!status) return records;
+  return records
+    .filter(application => status === 'applied'
+      ? application.status === 'applied' || application.status === 'pending'
+      : application.status === status)
     .map(application => ({
       ...application,
       selection_date: status === 'selected' ? application.updated_at : null
@@ -136,15 +149,46 @@ const AdminDashboard = () => {
     setLoading(true);
     setDashboardError('');
     try {
-      const [dashRes, jobsRes] = await Promise.all([
+      const [dashRes, jobsRes, applicationsRes] = await Promise.all([
         API.get('/admin/dashboard'),
-        API.get('/admin/jobs')
+        API.get('/admin/jobs'),
+        API.get('/admin/applications')
       ]);
 
-      setMetrics(dashRes.data.data.metrics);
+      const applications = applicationsRes.data.data.applications;
+      if (!Array.isArray(applications)) {
+        throw new Error('The applications response did not contain the expected records.');
+      }
+
+      const applicationCounts = applications.reduce((counts, application) => {
+        const status = String(application.status || '').toLowerCase();
+        if (status === 'applied' || status === 'pending') counts.pending_applications += 1;
+        if (status === 'shortlisted') counts.total_shortlisted += 1;
+        if (status === 'selected') counts.total_selected += 1;
+        return counts;
+      }, {
+        pending_applications: 0,
+        total_shortlisted: 0,
+        total_selected: 0
+      });
+
+      setMetrics({
+        ...dashRes.data.data.metrics,
+        total_applications: applications.length,
+        ...applicationCounts
+      });
       setJobs(jobsRes.data.data.jobs);
     } catch (err) {
-      setDashboardError(err.response?.data?.message || 'Unable to load dashboard statistics. Please retry.');
+      console.error('Admin dashboard data request failed', {
+        endpoints: ['/admin/dashboard', '/admin/jobs', '/admin/applications'],
+        status: err.response?.status,
+        message: err.response?.data?.message || err.message
+      });
+      setDashboardError(
+        err.response?.data?.message
+        || (err.response ? `Request failed (${err.response.status}). Please retry.` : err.message)
+        || 'Unable to load dashboard statistics. Please retry.'
+      );
     } finally {
       setLoading(false);
     }
@@ -159,14 +203,14 @@ const AdminDashboard = () => {
     setSectionError('');
     setSectionRecords([]);
     try {
-      try {
-        const response = await API.get(`/admin/dashboard/records/${section}`);
-        setSectionRecords(response.data.data.records);
-      } catch (err) {
-        if (err.response?.status !== 404) throw err;
-        setSectionRecords(await getLegacyDashboardRecords(section));
-      }
+      setSectionRecords(await getDashboardSectionRecords(section));
     } catch (err) {
+      console.error('Admin dashboard records request failed', {
+        section,
+        endpoint: dashboardSectionEndpoints[section],
+        status: err.response?.status,
+        message: err.response?.data?.message || err.message
+      });
       setSectionError(
         err.response?.data?.message
         || (err.response ? `Request failed (${err.response.status}). Please retry.` : err.message)
