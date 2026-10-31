@@ -51,8 +51,6 @@ const demoAccounts = [
   }
 ];
 
-const availableDemoAccounts = demoAccounts.filter(account => account.email && account.password);
-
 const LoginPage = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -87,6 +85,11 @@ const LoginPage = () => {
   const selectDemo = ({ role, email: demoEmail, password: demoPassword }) => {
     setSelectedDemo(role);
     setError('');
+    if (!demoEmail || !demoPassword) {
+      setDemoMessage('Admin demo sign-in is unavailable. Enter your admin credentials above.');
+      return;
+    }
+
     setEmail(demoEmail);
     setPassword(demoPassword);
     setDemoMessage(`${role} demo credentials are filled in. Review them, then select Sign in.`);
@@ -172,8 +175,8 @@ const LoginPage = () => {
         <span className="whitespace-nowrap text-[10px] font-bold tracking-[0.12em] text-slate-400">OR TRY A DEMO ACCOUNT</span>
         <span className="h-px flex-1 bg-slate-200" />
       </div>
-      <div className="mt-4 grid grid-cols-2 gap-2.5 sm:grid-cols-3">
-        {availableDemoAccounts.map(account => {
+      <div className="mt-4 grid grid-cols-3 gap-2.5">
+        {demoAccounts.map(account => {
           const Icon = account.icon;
           const isSelected = selectedDemo === account.role;
           return (
