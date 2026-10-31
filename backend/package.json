@@ -8,6 +8,7 @@
     "dev": "node --watch server.js",
     "db:init": "node src/db/initDb.js",
     "db:migrate": "node src/db/migrate.js",
+    "auth:audit-demo-accounts": "node scripts/auditDemoAccounts.js",
     "test": "node --test tests/**/*.test.js"
   },
   "keywords": [
@@ -26,6 +27,6 @@
     "express": "^4.19.2",
     "jsonwebtoken": "^9.0.2",
     "mysql2": "^3.24.6",
-    "nodemailer": "^10.2.1"
+    "nodemailer": "^10.3.1"
   }
 }
