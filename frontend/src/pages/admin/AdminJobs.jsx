@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import API from '../../services/api';
-import { Briefcase, CheckSquare, XCircle, CheckCircle2 } from 'lucide-react';
+import { CheckSquare } from 'lucide-react';
 
 const AdminJobs = () => {
   const [jobs, setJobs] = useState([]);
@@ -55,6 +55,7 @@ const AdminJobs = () => {
                 <th className="py-4 px-6">Company</th>
                 <th className="py-4 px-6">Job Title</th>
                 <th className="py-4 px-6">Location</th>
+                <th className="py-4 px-6">Package (LPA)</th>
                 <th className="py-4 px-6">Min CGPA</th>
                 <th className="py-4 px-6">Deadline</th>
                 <th className="py-4 px-6">Applicants</th>
@@ -68,6 +69,7 @@ const AdminJobs = () => {
                   <td className="py-4 px-6 font-bold text-slate-900">{job.company_name}</td>
                   <td className="py-4 px-6 font-semibold text-slate-800">{job.title}</td>
                   <td className="py-4 px-6 text-slate-600 text-xs">{job.location}</td>
+                  <td className="py-4 px-6 text-slate-600 text-xs">{job.expected_package === null || job.expected_package === undefined ? 'Not disclosed' : `${Number(job.expected_package).toFixed(2)} LPA`}</td>
                   <td className="py-4 px-6 font-extrabold text-blue-600">{parseFloat(job.minimum_cgpa).toFixed(2)}</td>
                   <td className="py-4 px-6 text-slate-500 text-xs">{new Date(job.deadline).toLocaleDateString()}</td>
                   <td className="py-4 px-6 font-bold text-slate-900">{job.applicants_count}</td>
@@ -75,6 +77,7 @@ const AdminJobs = () => {
                     <span className={`px-2.5 py-1 text-[11px] font-bold rounded-full uppercase tracking-wider ${
                       job.status === 'approved' ? 'bg-emerald-100 text-emerald-800' :
                       job.status === 'pending' ? 'bg-amber-100 text-amber-800' :
+                      job.status === 'rejected' ? 'bg-red-100 text-red-800' :
                       'bg-slate-100 text-slate-700'
                     }`}>
                       {job.status}
@@ -88,6 +91,7 @@ const AdminJobs = () => {
                     >
                       <option value="approved">Approved</option>
                       <option value="pending">Pending</option>
+                      <option value="rejected">Rejected</option>
                       <option value="closed">Closed</option>
                     </select>
                   </td>

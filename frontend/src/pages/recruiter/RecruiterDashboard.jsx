@@ -42,7 +42,7 @@ const RecruiterDashboard = () => {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
       {/* Header Banner */}
-      <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 rounded-3xl p-6 sm:p-8 text-white shadow-md flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6">
+      <div className="bg-gradient-to-r from-blue-900 via-blue-800 to-emerald-800 rounded-3xl p-6 sm:p-8 text-white shadow-md flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6">
         <div>
           <span className="text-xs font-semibold px-3 py-1 bg-white/10 rounded-full text-blue-300 inline-block mb-2">
             Recruiter Workspace

@@ -13,10 +13,10 @@ class AuthController {
         });
       }
 
-      if (!['student', 'recruiter', 'admin'].includes(role)) {
+      if (!['student', 'recruiter'].includes(role)) {
         return res.status(400).json({
           success: false,
-          message: 'Validation Error. Role must be student, recruiter, or admin.',
+          message: 'Validation Error. Only student and recruiter accounts can register.',
           errors: ['INVALID_ROLE']
         });
       }

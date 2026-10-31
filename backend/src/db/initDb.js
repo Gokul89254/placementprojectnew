@@ -1,75 +1,72 @@
 const fs = require('fs');
 const path = require('path');
-const { Pool } = require('pg');
+const mysql = require('mysql2/promise');
 require('dotenv').config();
 
-async function initializeDatabase() {
-  let appPool;
-
-  if (process.env.DATABASE_URL && process.env.DATABASE_URL.trim()) {
-    const dbUrl = process.env.DATABASE_URL.trim();
-    const isCloud = dbUrl.includes('neon.tech') || dbUrl.includes('supabase') || dbUrl.includes('render.com') || dbUrl.includes('sslmode=require');
-    
-    console.log('📡 Connecting to DATABASE_URL...');
-    appPool = new Pool({
-      connectionString: dbUrl,
-      ssl: isCloud || process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
-    });
-  } else {
-    const dbName = process.env.PGDATABASE || 'placement_db';
-    const systemPool = new Pool({
-      user: process.env.PGUSER || 'postgres',
-      host: process.env.PGHOST || 'localhost',
-      database: 'postgres',
-      password: process.env.PGPASSWORD || 'postgres',
-      port: process.env.PGPORT ? parseInt(process.env.PGPORT, 10) : 5433,
-    });
-
-    try {
-      console.log(`🔍 Checking if database '${dbName}' exists...`);
-      const res = await systemPool.query(`SELECT 1 FROM pg_database WHERE datname = $1`, [dbName]);
-      if (res.rowCount === 0) {
-        console.log(`⚙️ Creating database '${dbName}'...`);
-        await systemPool.query(`CREATE DATABASE "${dbName}"`);
-        console.log(`✅ Database '${dbName}' created successfully.`);
-      }
-    } catch (err) {
-      console.error('Error checking/creating database:', err.message);
-    } finally {
-      await systemPool.end();
-    }
-
-    appPool = new Pool({
-      user: process.env.PGUSER || 'postgres',
-      host: process.env.PGHOST || 'localhost',
-      database: dbName,
-      password: process.env.PGPASSWORD || 'postgres',
-      port: process.env.PGPORT ? parseInt(process.env.PGPORT, 10) : 5433,
-    });
+function createConnectionConfig(database) {
+  const dbUrl = (process.env.DATABASE_URL || '').trim();
+  if (dbUrl) {
+    const url = new URL(dbUrl);
+    const config = {
+      host: url.hostname,
+      port: url.port ? parseInt(url.port, 10) : 3306,
+      user: decodeURIComponent(url.username),
+      password: decodeURIComponent(url.password)
+    };
+    const databaseName = database === undefined ? decodeURIComponent(url.pathname.slice(1)) : database;
+    if (databaseName) config.database = databaseName;
+    return config;
   }
 
+  return {
+    host: process.env.MYSQL_HOST || 'localhost',
+    port: process.env.MYSQL_PORT ? parseInt(process.env.MYSQL_PORT, 10) : 3306,
+    user: process.env.MYSQL_USER || 'root',
+    password: process.env.MYSQL_PASSWORD || '',
+    ...(database ? { database } : {})
+  };
+}
+
+async function executeScript(connection, script) {
+  const statements = script
+    .split(/;\s*(?:\r?\n|$)/)
+    .map(statement => statement.trim())
+    .filter(Boolean);
+
+  for (const statement of statements) {
+    await connection.query(statement);
+  }
+}
+
+async function initializeDatabase() {
+  let connection;
+
   try {
+    const dbName = process.env.MYSQL_DATABASE || 'placement_db';
+    const systemConnection = await mysql.createConnection(createConnectionConfig(null));
+    try {
+      await systemConnection.query(`CREATE DATABASE IF NOT EXISTS \`${dbName.replace(/`/g, '``')}\``);
+    } finally {
+      await systemConnection.end();
+    }
+
+    connection = await mysql.createConnection(createConnectionConfig(dbName));
+
     console.log('📄 Reading schema.sql...');
     const schemaPath = path.join(__dirname, 'schema.sql');
-    const schemaSql = fs.readFileSync(schemaPath, 'utf8');
-
-    console.log('⚡ Executing schema SQL script...');
-    await appPool.query(schemaSql);
+    await executeScript(connection, fs.readFileSync(schemaPath, 'utf8'));
     console.log('✅ Tables and constraints created successfully.');
 
     console.log('🌱 Reading seed.sql...');
     const seedPath = path.join(__dirname, 'seed.sql');
-    const seedSql = fs.readFileSync(seedPath, 'utf8');
-
-    console.log('⚡ Executing seed SQL script...');
-    await appPool.query(seedSql);
+    await executeScript(connection, fs.readFileSync(seedPath, 'utf8'));
     console.log('✅ Demo data inserted successfully.');
-  } catch (err) {
-    console.error('❌ Error executing database script:', err);
-    process.exit(1);
-  } finally {
-    await appPool.end();
     console.log('🎉 Database initialization complete!');
+  } catch (err) {
+    console.error('❌ Error initializing MySQL database:', err.message);
+    process.exitCode = 1;
+  } finally {
+    if (connection) await connection.end();
   }
 }
 

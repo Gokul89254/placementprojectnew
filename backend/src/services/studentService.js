@@ -9,7 +9,7 @@ class StudentService {
       `SELECT s.*, u.name, u.email
        FROM students s
        JOIN users u ON s.user_id = u.id
-       WHERE s.user_id = $1`,
+       WHERE s.user_id = ?`,
       [userId]
     );
 
@@ -23,7 +23,7 @@ class StudentService {
 
     // Fetch skills
     const skillsRes = await db.query(
-      `SELECT skill_name FROM student_skills WHERE student_id = $1 ORDER BY skill_name ASC`,
+      `SELECT skill_name FROM student_skills WHERE student_id = ? ORDER BY skill_name ASC`,
       [student.id]
     );
     student.skills = skillsRes.rows.map(r => r.skill_name);
@@ -32,12 +32,12 @@ class StudentService {
     const statsRes = await db.query(
       `SELECT 
          COUNT(*) AS total_applications,
-         COUNT(*) FILTER (WHERE status = 'shortlisted') AS shortlisted_count,
-         COUNT(*) FILTER (WHERE status = 'selected') AS selected_count,
-         COUNT(*) FILTER (WHERE status = 'rejected') AS rejected_count,
-         COUNT(*) FILTER (WHERE status = 'applied') AS pending_count
+         COALESCE(SUM(CASE WHEN status = 'shortlisted' THEN 1 ELSE 0 END), 0) AS shortlisted_count,
+         COALESCE(SUM(CASE WHEN status = 'selected' THEN 1 ELSE 0 END), 0) AS selected_count,
+         COALESCE(SUM(CASE WHEN status = 'rejected' THEN 1 ELSE 0 END), 0) AS rejected_count,
+         COALESCE(SUM(CASE WHEN status = 'applied' THEN 1 ELSE 0 END), 0) AS pending_count
        FROM applications
-       WHERE student_id = $1`,
+       WHERE student_id = ?`,
       [student.id]
     );
 
@@ -56,7 +56,7 @@ class StudentService {
    * Update student profile, user credentials & skills list dynamically
    */
   async updateStudentProfile(userId, { name, email, phone, enrollment_number, department, graduation_year, cgpa, resume_url, skills }) {
-    const studentRes = await db.query('SELECT id FROM students WHERE user_id = $1', [userId]);
+    const studentRes = await db.query('SELECT id FROM students WHERE user_id = ?', [userId]);
     if (studentRes.rowCount === 0) {
       const error = new Error('Student profile not found');
       error.status = 404;
@@ -72,7 +72,7 @@ class StudentService {
       // 1. Update users table (name, email)
       if (name !== undefined || email !== undefined) {
         if (email && email.trim()) {
-          const emailCheck = await client.query('SELECT id FROM users WHERE email = $1 AND id != $2', [email.toLowerCase().trim(), userId]);
+          const emailCheck = await client.query('SELECT id FROM users WHERE email = ? AND id != ?', [email.toLowerCase().trim(), userId]);
           if (emailCheck.rowCount > 0) {
             const error = new Error('Email address is already used by another account');
             error.status = 409;
@@ -85,10 +85,10 @@ class StudentService {
 
         await client.query(
           `UPDATE users
-           SET name = COALESCE($1, name),
-               email = COALESCE($2, email),
+           SET name = COALESCE(?, name),
+               email = COALESCE(?, email),
                updated_at = CURRENT_TIMESTAMP
-           WHERE id = $3`,
+           WHERE id = ?`,
           [nameVal || null, emailVal || null, userId]
         );
       }
@@ -103,25 +103,25 @@ class StudentService {
 
       await client.query(
         `UPDATE students 
-         SET phone = COALESCE($1, phone),
-             enrollment_number = COALESCE($2, enrollment_number),
-             department = COALESCE($3, department),
-             graduation_year = COALESCE($4, graduation_year),
-             cgpa = COALESCE($5, cgpa),
-             resume_url = COALESCE($6, resume_url),
+         SET phone = COALESCE(?, phone),
+             enrollment_number = COALESCE(?, enrollment_number),
+             department = COALESCE(?, department),
+             graduation_year = COALESCE(?, graduation_year),
+             cgpa = COALESCE(?, cgpa),
+             resume_url = COALESCE(?, resume_url),
              updated_at = CURRENT_TIMESTAMP
-         WHERE id = $7`,
+         WHERE id = ?`,
         [phoneVal, enrollVal, deptVal, gradVal, cgpaVal, resumeVal, studentId]
       );
 
       // 3. Update student_skills tags
       if (Array.isArray(skills)) {
-        await client.query('DELETE FROM student_skills WHERE student_id = $1', [studentId]);
+        await client.query('DELETE FROM student_skills WHERE student_id = ?', [studentId]);
 
         for (const skill of skills) {
           if (skill && skill.toString().trim()) {
             await client.query(
-              'INSERT INTO student_skills (student_id, skill_name) VALUES ($1, $2) ON CONFLICT DO NOTHING',
+              'INSERT IGNORE INTO student_skills (student_id, skill_name) VALUES (?, ?)',
               [studentId, skill.toString().trim()]
             );
           }
@@ -143,7 +143,7 @@ class StudentService {
    * Get all job applications for current student
    */
   async getStudentApplications(userId) {
-    const studentRes = await db.query('SELECT id FROM students WHERE user_id = $1', [userId]);
+    const studentRes = await db.query('SELECT id FROM students WHERE user_id = ?', [userId]);
     if (studentRes.rowCount === 0) {
       const error = new Error('Student profile not found');
       error.status = 404;
@@ -165,11 +165,30 @@ class StudentService {
          j.minimum_cgpa,
          j.deadline,
          c.id AS company_id,
-         c.company_name
+         c.company_name,
+         (SELECT JSON_ARRAYAGG(JSON_OBJECT(
+           'id', i.id,
+           'round_name', i.round_name,
+           'scheduled_at', DATE_FORMAT(i.scheduled_at, '%Y-%m-%dT%H:%i'),
+           'mode', i.mode,
+           'location', i.location,
+           'meeting_link', i.meeting_link,
+           'status', i.status
+         ))
+          FROM interview_schedules i
+          WHERE i.application_id = a.id) AS interviews,
+         (SELECT JSON_OBJECT(
+           'result_status', p.result_status,
+           'package_amount', p.package_amount,
+           'offer_date', p.offer_date,
+           'notes', p.notes
+         )
+          FROM placement_results p
+          WHERE p.application_id = a.id) AS placement_result
        FROM applications a
        JOIN job_postings j ON a.job_id = j.id
        JOIN companies c ON j.company_id = c.id
-       WHERE a.student_id = $1
+       WHERE a.student_id = ?
        ORDER BY a.applied_at DESC`,
       [studentId]
     );

@@ -1,63 +1,56 @@
-const { Pool } = require('pg');
+const mysql = require('mysql2/promise');
 require('dotenv').config();
 
-let pool;
-
 const dbUrl = (process.env.DATABASE_URL || '').trim();
+const pool = mysql.createPool(dbUrl || {
+  host: process.env.MYSQL_HOST || 'localhost',
+  user: process.env.MYSQL_USER || 'root',
+  password: process.env.MYSQL_PASSWORD || '',
+  database: process.env.MYSQL_DATABASE || 'placement_db',
+  port: process.env.MYSQL_PORT ? parseInt(process.env.MYSQL_PORT, 10) : 3306,
+  waitForConnections: true,
+  connectionLimit: 10,
+  queueLimit: 0,
+  decimalNumbers: true
+});
 
-if (dbUrl) {
-  const isCloud = dbUrl.includes('neon.tech') || dbUrl.includes('supabase') || dbUrl.includes('render.com') || dbUrl.includes('sslmode=require');
-  
-  pool = new Pool({
-    connectionString: dbUrl,
-    ssl: isCloud || process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
-    max: 10,
-    idleTimeoutMillis: 10000,
-    connectionTimeoutMillis: 10000
-  });
-} else if (process.env.VERCEL || process.env.NODE_ENV === 'production') {
-  console.error('DATABASE_URL is missing in environment variables');
-  pool = {
-    query: async () => {
-      const err = new Error('DATABASE_URL environment variable is missing on Vercel. Please add DATABASE_URL in Vercel Project Settings -> Environment Variables.');
-      err.status = 500;
-      throw err;
-    }
-  };
-} else {
-  pool = new Pool({
-    user: process.env.PGUSER || 'postgres',
-    host: process.env.PGHOST || 'localhost',
-    database: process.env.PGDATABASE || 'placement_db',
-    password: process.env.PGPASSWORD || 'postgres',
-    port: process.env.PGPORT ? parseInt(process.env.PGPORT, 10) : 5433,
-  });
-}
-
-if (pool.on) {
-  pool.on('error', (err) => {
-    console.error('Unexpected error on idle PostgreSQL client:', err.message);
-  });
-}
-
-// Resilient query wrapper with automatic 1-time retry for Neon serverless wakeups
-const query = async (text, params) => {
-  try {
-    return await pool.query(text, params);
-  } catch (err) {
-    if (
-      err.code === 'ECONNRESET' ||
-      err.code === '57P01' ||
-      (err.message && (err.message.includes('terminated') || err.message.includes('closed') || err.message.includes('reset')))
-    ) {
-      console.warn('⚠️ DB Connection reset by Neon endpoint, retrying query...', err.message);
-      return await pool.query(text, params);
-    }
-    throw err;
+function normalizeResult([result]) {
+  if (Array.isArray(result)) {
+    const rows = result.map(row => {
+      for (const column of ['skills', 'required_skills', 'student_skills', 'interviews', 'placement_result']) {
+        if (typeof row[column] === 'string') {
+          row[column] = JSON.parse(row[column]).filter(value => value !== null);
+        } else if (Array.isArray(row[column])) {
+          row[column] = row[column].filter(value => value !== null);
+        }
+      }
+      return row;
+    });
+    return { rows, rowCount: rows.length };
   }
-};
+
+  return {
+    rows: [],
+    rowCount: result.affectedRows,
+    insertId: result.insertId
+  };
+}
+
+function createConnectionAdapter(connection) {
+  return {
+    query: async (sql, params = []) => normalizeResult(await connection.query(sql, params)),
+    release: () => connection.release()
+  };
+}
+
+pool.on('error', (err) => {
+  console.error('Unexpected error on idle MySQL connection:', err.message);
+});
 
 module.exports = {
-  query,
-  pool
+  query: async (sql, params = []) => normalizeResult(await pool.query(sql, params)),
+  pool: {
+    connect: async () => createConnectionAdapter(await pool.getConnection()),
+    end: () => pool.end()
+  }
 };

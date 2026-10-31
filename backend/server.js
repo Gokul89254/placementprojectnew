@@ -1,7 +1,8 @@
+const path = require('path');
+require('dotenv').config({ path: path.join(__dirname, '.env') });
 const app = require('./src/app');
-require('dotenv').config();
 
-const DEFAULT_PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 5000;
+const DEFAULT_PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 5001;
 
 function startServer(port) {
   const server = app.listen(port, () => {

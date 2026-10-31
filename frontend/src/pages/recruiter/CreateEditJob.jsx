@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import API from '../../services/api';
-import { PlusCircle, Save, Plus, X, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { PlusCircle, Save, Plus, X, AlertCircle, Pencil } from 'lucide-react';
 
 const CreateEditJob = () => {
   const navigate = useNavigate();
+  const { jobId } = useParams();
+  const isEditing = Boolean(jobId);
   const [companyId, setCompanyId] = useState(null);
 
   const [formData, setFormData] = useState({
@@ -13,6 +15,7 @@ const CreateEditJob = () => {
     location: 'Bangalore, India',
     employment_type: 'Full-Time',
     minimum_cgpa: 7.5,
+    expected_package: '',
     graduation_year: 2026,
     deadline: '2026-12-31'
   });
@@ -24,31 +27,43 @@ const CreateEditJob = () => {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    const fetchCompany = async () => {
+    const fetchFormData = async () => {
       try {
         const meRes = await API.get('/auth/me');
         const companies = meRes.data.data.user.companies || [];
 
         if (companies.length > 0) {
           setCompanyId(companies[0].id);
-        } else {
-          // Auto create fallback company if none exists
-          const compRes = await API.post('/companies', {
-            company_name: 'Corporate Partner',
-            description: 'Campus hiring organization',
-            location: 'Bangalore'
+        } else if (!isEditing) {
+          navigate('/recruiter/company');
+          return;
+        }
+
+        if (isEditing) {
+          const jobRes = await API.get(`/jobs/${jobId}`);
+          const job = jobRes.data.data.job;
+          setFormData({
+            title: job.title || '',
+            description: job.description || '',
+            location: job.location || '',
+            employment_type: job.employment_type || 'Full-Time',
+            minimum_cgpa: job.minimum_cgpa ?? 0,
+            expected_package: job.expected_package ?? '',
+            graduation_year: job.graduation_year ?? '',
+            deadline: job.deadline ? String(job.deadline).slice(0, 10) : ''
           });
-          setCompanyId(compRes.data.data.company.id);
+          setSkills(Array.isArray(job.required_skills) ? job.required_skills : []);
         }
       } catch (err) {
-        console.error('Error fetching company context:', err);
+        console.error('Error loading job form:', err);
+        setError(err.response?.data?.message || 'Failed to load job details.');
       } finally {
         setLoading(false);
       }
     };
 
-    fetchCompany();
-  }, []);
+    fetchFormData();
+  }, [isEditing, jobId]);
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -72,14 +87,19 @@ const CreateEditJob = () => {
     setSubmitting(true);
 
     try {
-      await API.post('/jobs', {
+      const jobData = {
         ...formData,
-        company_id: companyId,
+        expected_package: formData.expected_package === '' ? null : Number(formData.expected_package),
         required_skills: skills
-      });
+      };
+      if (isEditing) {
+        await API.put(`/jobs/${jobId}`, jobData);
+      } else {
+        await API.post('/jobs', { ...jobData, company_id: companyId });
+      }
       navigate('/recruiter/jobs');
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to create job posting.');
+      setError(err.response?.data?.message || `Failed to ${isEditing ? 'update' : 'create'} job posting.`);
     } finally {
       setSubmitting(false);
     }
@@ -98,11 +118,11 @@ const CreateEditJob = () => {
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 sm:p-8">
         <div className="flex items-center gap-3 pb-6 mb-6 border-b border-slate-200">
           <div className="p-3 bg-blue-100 text-blue-600 rounded-xl">
-            <PlusCircle className="w-6 h-6" />
+            {isEditing ? <Pencil className="w-6 h-6" /> : <PlusCircle className="w-6 h-6" />}
           </div>
           <div>
-            <h1 className="text-xl font-bold text-slate-900">Post New Campus Job Opportunity</h1>
-            <p className="text-xs text-slate-500">Define job criteria, target graduation year, and required technical skills</p>
+            <h1 className="text-xl font-bold text-slate-900">{isEditing ? 'Edit Job Posting' : 'Post New Campus Job Opportunity'}</h1>
+            <p className="text-xs text-slate-500">{isEditing ? 'Update job details, package, and required skills.' : 'Define job criteria, target graduation year, and required technical skills. An admin must approve your posting before students can see it.'}</p>
           </div>
         </div>
 
@@ -168,6 +188,21 @@ const CreateEditJob = () => {
                 onChange={handleChange}
                 className="block w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-slate-900 text-sm font-bold text-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-600"
               />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">Expected Annual Package (LPA)</label>
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                name="expected_package"
+                value={formData.expected_package}
+                onChange={handleChange}
+                placeholder="e.g. 6.5"
+                className="block w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600"
+              />
+              <p className="mt-1 text-xs text-slate-500">Enter the amount in lakhs per annum (for example, 6.50 displays as 6.50 LPA on job listings and details). Leave blank if not disclosed.</p>
             </div>
 
             <div>
@@ -260,7 +295,7 @@ const CreateEditJob = () => {
               disabled={submitting}
               className="inline-flex items-center gap-2 px-6 py-2.5 bg-blue-600 text-white rounded-xl text-xs font-bold hover:bg-blue-700 shadow-sm transition-colors disabled:opacity-50"
             >
-              <Save className="w-4 h-4" /> {submitting ? 'Publishing Job...' : 'Publish Job Posting'}
+              <Save className="w-4 h-4" /> {submitting ? (isEditing ? 'Saving Changes...' : 'Publishing Job...') : (isEditing ? 'Save Changes' : 'Publish Job Posting')}
             </button>
           </div>
         </form>

@@ -3,7 +3,7 @@ const companyService = require('../services/companyService');
 class CompanyController {
   async createCompany(req, res, next) {
     try {
-      const company = await companyService.createCompany(req.user.userId, req.body);
+      const company = await companyService.createCompany(req.user.userId, req.user.role, req.body);
       res.status(201).json({
         success: true,
         message: 'Company profile created successfully',

@@ -55,7 +55,7 @@ const StudentDashboard = () => {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
       {/* Welcome Banner */}
-      <div className="bg-gradient-to-r from-blue-600 via-blue-700 to-indigo-800 rounded-3xl p-6 sm:p-8 text-white shadow-md relative overflow-hidden">
+      <div className="bg-gradient-to-r from-blue-700 via-blue-600 to-emerald-600 rounded-3xl p-6 sm:p-8 text-white shadow-md relative overflow-hidden">
         <div className="relative z-10 max-w-2xl">
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-white/20 text-white backdrop-blur-md mb-3">
             <Sparkles className="w-3.5 h-3.5" /> Placement Portal
@@ -63,7 +63,7 @@ const StudentDashboard = () => {
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight mb-2">
             Welcome back, {student?.name}! 👋
           </h1>
-          <p className="text-blue-100 text-sm sm:text-base leading-relaxed mb-6">
+          <p className="text-blue-50 text-sm sm:text-base leading-relaxed mb-6">
             Department: <span className="font-semibold text-white">{student?.department}</span> | Graduation Year: <span className="font-semibold text-white">{student?.graduation_year}</span> | CGPA: <span className="font-bold text-emerald-300">{parseFloat(student?.cgpa).toFixed(2)}</span>
           </p>
           <div className="flex flex-wrap gap-3">
@@ -150,6 +150,9 @@ const StudentDashboard = () => {
                       <h4 className="font-bold text-slate-900 text-base">{job.title}</h4>
                       <p className="text-xs text-slate-500 font-medium">{job.company_name} • {job.location}</p>
                       <div className="flex items-center gap-2 mt-2">
+                        <span className="text-[11px] font-semibold px-2 py-0.5 bg-emerald-50 text-emerald-700 rounded-md">
+                          Package: {job.expected_package === null || job.expected_package === undefined ? 'Not disclosed' : `${Number(job.expected_package).toFixed(2)} LPA`}
+                        </span>
                         <span className="text-[11px] font-semibold px-2 py-0.5 bg-blue-50 text-blue-700 rounded-md">
                           Min CGPA: {parseFloat(job.minimum_cgpa).toFixed(2)}
                         </span>

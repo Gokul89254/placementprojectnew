@@ -1,23 +1,34 @@
--- Placement Management Platform Seed Data
+-- Placemate MySQL Seed Data
 -- Demo Credentials:
--- Admin: admin@example.com / Password123
+-- Major admin: gokulravi89254@gmail.com / Password123
 -- Recruiter: recruiter@example.com / Password123
 -- Student: student@example.com / Password123
 
 -- Clear existing data
-TRUNCATE TABLE applications, job_required_skills, job_postings, companies, student_skills, students, users RESTART IDENTITY CASCADE;
+SET FOREIGN_KEY_CHECKS = 0;
+TRUNCATE TABLE applications;
+TRUNCATE TABLE job_required_skills;
+TRUNCATE TABLE job_postings;
+TRUNCATE TABLE companies;
+TRUNCATE TABLE student_skills;
+TRUNCATE TABLE students;
+TRUNCATE TABLE users;
+SET FOREIGN_KEY_CHECKS = 1;
 
 -- Hash for 'Password123': $2a$10$vvfjWbKo3hHWUjEuztwhCu0c.1CQMZIbzgrHUXgoQLTmqxeC3dNX6
 
 -- 1. SEED USERS
 INSERT INTO users (name, email, password_hash, role) VALUES
-('System Administrator', 'admin@example.com', '$2a$10$vvfjWbKo3hHWUjEuztwhCu0c.1CQMZIbzgrHUXgoQLTmqxeC3dNX6', 'admin'),
+('System Administrator', 'gokulravi89254@gmail.com', '$2a$10$vvfjWbKo3hHWUjEuztwhCu0c.1CQMZIbzgrHUXgoQLTmqxeC3dNX6', 'admin'),
 ('Sarah Jenkins (Recruiter)', 'recruiter@example.com', '$2a$10$vvfjWbKo3hHWUjEuztwhCu0c.1CQMZIbzgrHUXgoQLTmqxeC3dNX6', 'recruiter'),
 ('David Miller (Recruiter)', 'techcorp@example.com', '$2a$10$vvfjWbKo3hHWUjEuztwhCu0c.1CQMZIbzgrHUXgoQLTmqxeC3dNX6', 'recruiter'),
 ('Alex Johnson', 'student@example.com', '$2a$10$vvfjWbKo3hHWUjEuztwhCu0c.1CQMZIbzgrHUXgoQLTmqxeC3dNX6', 'student'),
 ('Priya Sharma', 'priya@example.com', '$2a$10$vvfjWbKo3hHWUjEuztwhCu0c.1CQMZIbzgrHUXgoQLTmqxeC3dNX6', 'student'),
 ('Rahul Verma', 'rahul@example.com', '$2a$10$vvfjWbKo3hHWUjEuztwhCu0c.1CQMZIbzgrHUXgoQLTmqxeC3dNX6', 'student'),
 ('Ananya Das', 'ananya@example.com', '$2a$10$vvfjWbKo3hHWUjEuztwhCu0c.1CQMZIbzgrHUXgoQLTmqxeC3dNX6', 'student');
+
+INSERT INTO users (name, email, password_hash, role) VALUES
+('Innovate AI Labs Recruiter', 'innovate@example.com', '$2a$10$vvfjWbKo3hHWUjEuztwhCu0c.1CQMZIbzgrHUXgoQLTmqxeC3dNX6', 'recruiter');
 
 -- 2. SEED STUDENTS
 -- user_id 4: Alex Johnson
@@ -39,11 +50,11 @@ INSERT INTO student_skills (student_id, skill_name) VALUES
 (4, 'AutoCAD'), (4, 'Python'), (4, 'SolidWorks');
 
 -- 4. SEED COMPANIES
--- recruiter_id 2 (Sarah Jenkins), recruiter_id 3 (David Miller)
-INSERT INTO companies (recruiter_id, company_name, description, website, location) VALUES
-(2, 'Global Tech Solutions', 'Leading enterprise software & cloud infrastructure provider.', 'https://globaltech.example.com', 'Bangalore, India'),
-(2, 'Innovate AI Labs', 'Next-gen artificial intelligence & data analytics startup.', 'https://innovateai.example.com', 'Hyderabad, India'),
-(3, 'CloudScale Systems', 'Scalable microservices and cloud management platforms.', 'https://cloudscale.example.com', 'Pune, India');
+-- Each recruiter account manages one company.
+INSERT INTO companies (recruiter_id, company_name, description, website, location, status) VALUES
+(2, 'Global Tech Solutions', 'Leading enterprise software & cloud infrastructure provider.', 'https://globaltech.example.com', 'Bangalore, India', 'approved'),
+(8, 'Innovate AI Labs', 'Next-gen artificial intelligence & data analytics startup.', 'https://innovateai.example.com', 'Hyderabad, India', 'approved'),
+(3, 'CloudScale Systems', 'Scalable microservices and cloud management platforms.', 'https://cloudscale.example.com', 'Pune, India', 'approved');
 
 -- 5. SEED JOB POSTINGS
 INSERT INTO job_postings (company_id, title, description, location, employment_type, minimum_cgpa, graduation_year, deadline, status) VALUES
@@ -69,11 +80,11 @@ INSERT INTO job_required_skills (job_id, skill_name) VALUES
 -- 7. SEED APPLICATIONS
 -- Alex Johnson (Student ID 1) applied to SDE-1 (Job 1) & Frontend (Job 2)
 INSERT INTO applications (job_id, student_id, status, applied_at) VALUES
-(1, 1, 'shortlisted', CURRENT_TIMESTAMP - INTERVAL '5 days'),
-(2, 1, 'applied', CURRENT_TIMESTAMP - INTERVAL '2 days'),
+(1, 1, 'shortlisted', CURRENT_TIMESTAMP - INTERVAL 5 DAY),
+(2, 1, 'applied', CURRENT_TIMESTAMP - INTERVAL 2 DAY),
 -- Priya Sharma (Student ID 2) applied to SDE-1 (Job 1), Data Engineer (Job 3), Backend Systems (Job 4)
-(1, 2, 'selected', CURRENT_TIMESTAMP - INTERVAL '10 days'),
-(3, 2, 'shortlisted', CURRENT_TIMESTAMP - INTERVAL '4 days'),
-(4, 2, 'applied', CURRENT_TIMESTAMP - INTERVAL '1 day'),
+(1, 2, 'selected', CURRENT_TIMESTAMP - INTERVAL 10 DAY),
+(3, 2, 'shortlisted', CURRENT_TIMESTAMP - INTERVAL 4 DAY),
+(4, 2, 'applied', CURRENT_TIMESTAMP - INTERVAL 1 DAY),
 -- Rahul Verma (Student ID 3) applied to Frontend Developer (Job 2)
-(2, 3, 'rejected', CURRENT_TIMESTAMP - INTERVAL '6 days');
+(2, 3, 'rejected', CURRENT_TIMESTAMP - INTERVAL 6 DAY);

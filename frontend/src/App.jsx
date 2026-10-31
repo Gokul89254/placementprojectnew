@@ -28,12 +28,15 @@ import AdminStudents from './pages/admin/AdminStudents';
 import AdminCompanies from './pages/admin/AdminCompanies';
 import AdminJobs from './pages/admin/AdminJobs';
 import AdminApplications from './pages/admin/AdminApplications';
+import AdminInterviews from './pages/admin/AdminInterviews';
+import AdminPlacements from './pages/admin/AdminPlacements';
+import AdminAccount from './pages/admin/AdminAccount';
 
 function App() {
   return (
     <AuthProvider>
       <Router>
-        <div className="min-h-screen bg-slate-50 flex flex-col justify-between">
+        <div className="min-h-screen bg-blue-50/40 flex flex-col justify-between">
           <Navbar />
           <main className="flex-1 pb-12">
             <Routes>
@@ -56,7 +59,10 @@ function App() {
                 <Route path="/recruiter/company" element={<CompanyProfile />} />
                 <Route path="/recruiter/jobs" element={<MyJobs />} />
                 <Route path="/recruiter/jobs/create" element={<CreateEditJob />} />
+                <Route path="/recruiter/jobs/:jobId/edit" element={<CreateEditJob />} />
                 <Route path="/recruiter/jobs/:jobId/applicants" element={<ApplicantsManagement />} />
+                <Route path="/recruiter/interviews" element={<AdminInterviews recruiterMode />} />
+                <Route path="/recruiter/placements" element={<AdminPlacements recruiterMode />} />
               </Route>
 
               {/* Admin Protected Routes */}
@@ -66,6 +72,9 @@ function App() {
                 <Route path="/admin/companies" element={<AdminCompanies />} />
                 <Route path="/admin/jobs" element={<AdminJobs />} />
                 <Route path="/admin/applications" element={<AdminApplications />} />
+                <Route path="/admin/interviews" element={<AdminInterviews />} />
+                <Route path="/admin/placements" element={<AdminPlacements />} />
+                <Route path="/admin/account" element={<AdminAccount />} />
               </Route>
 
               {/* Catch-all Fallback */}

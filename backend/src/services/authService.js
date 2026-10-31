@@ -1,14 +1,21 @@
 const bcrypt = require('bcryptjs');
 const db = require('../config/db');
+const emailNotificationService = require('./emailNotificationService');
 const { generateToken } = require('../utils/token');
 
 class AuthService {
   /**
-   * Register a new user (student, recruiter, or admin)
+   * Register a new student or recruiter account.
    */
   async register({ name, email, password, role, enrollment_number, department, graduation_year, cgpa, company_name }) {
+    if (!['student', 'recruiter'].includes(role)) {
+      const error = new Error('Only student and recruiter accounts can register');
+      error.status = 400;
+      throw error;
+    }
+
     // 1. Check duplicate email
-    const existingUser = await db.query('SELECT id FROM users WHERE email = $1', [email.toLowerCase().trim()]);
+    const existingUser = await db.query('SELECT id FROM users WHERE email = ?', [email.toLowerCase().trim()]);
     if (existingUser.rowCount > 0) {
       const error = new Error('Email address is already registered');
       error.status = 409;
@@ -21,15 +28,19 @@ class AuthService {
 
     // 3. Begin database transaction
     const client = await db.pool.connect();
+    let createdCompanyId = null;
     try {
       await client.query('BEGIN');
 
       // Insert User
-      const userRes = await client.query(
+      const userInsert = await client.query(
         `INSERT INTO users (name, email, password_hash, role)
-         VALUES ($1, $2, $3, $4)
-         RETURNING id, name, email, role, created_at`,
+         VALUES (?, ?, ?, ?)`,
         [name.trim(), email.toLowerCase().trim(), password_hash, role]
+      );
+      const userRes = await client.query(
+        'SELECT id, name, email, role, created_at FROM users WHERE id = ?',
+        [userInsert.insertId]
       );
       const newUser = userRes.rows[0];
 
@@ -42,21 +53,34 @@ class AuthService {
 
         await client.query(
           `INSERT INTO students (user_id, enrollment_number, department, graduation_year, cgpa)
-           VALUES ($1, $2, $3, $4, $5)`,
+           VALUES (?, ?, ?, ?, ?)`,
           [newUser.id, enrollNum, dept, gradYear, studentCgpa]
         );
       }
 
       // If Recruiter, create initial company profile if provided
       if (role === 'recruiter' && company_name) {
-        await client.query(
-          `INSERT INTO companies (recruiter_id, company_name, description, location)
-           VALUES ($1, $2, $3, $4)`,
+        const companyInsert = await client.query(
+          `INSERT INTO companies (recruiter_id, company_name, description, location, status)
+           VALUES (?, ?, ?, ?, 'pending')`,
           [newUser.id, company_name.trim(), 'Company profile created upon recruiter registration.', 'To be updated']
         );
+        createdCompanyId = companyInsert.insertId;
       }
 
       await client.query('COMMIT');
+
+      if (createdCompanyId) {
+        const admins = await db.query("SELECT email FROM users WHERE role = 'admin'");
+        await emailNotificationService.sendCompanyPendingReview({
+          admin_emails: admins.rows.map(admin => admin.email),
+          company_id: createdCompanyId,
+          company_name: company_name.trim(),
+          recruiter_name: newUser.name,
+          recruiter_email: newUser.email,
+          location: 'To be updated'
+        });
+      }
 
       // 4. Generate JWT Token
       const token = generateToken({
@@ -90,7 +114,7 @@ class AuthService {
 
     // 1. Find user by email
     const res = await db.query(
-      `SELECT id, name, email, password_hash, role FROM users WHERE email = $1`,
+      `SELECT id, name, email, password_hash, role FROM users WHERE email = ?`,
       [email.toLowerCase().trim()]
     );
 
@@ -134,7 +158,7 @@ class AuthService {
    */
   async getMe(userId) {
     const userRes = await db.query(
-      `SELECT id, name, email, role, created_at FROM users WHERE id = $1`,
+      `SELECT id, name, email, role, created_at FROM users WHERE id = ?`,
       [userId]
     );
 
@@ -149,17 +173,18 @@ class AuthService {
     // Enrich response based on role
     if (user.role === 'student') {
       const studentRes = await db.query(
-        `SELECT s.*, ARRAY_AGG(sk.skill_name) FILTER (WHERE sk.skill_name IS NOT NULL) AS skills
+        `SELECT s.*,
+                (SELECT JSON_ARRAYAGG(sk.skill_name)
+                 FROM student_skills sk
+                 WHERE sk.student_id = s.id) AS skills
          FROM students s
-         LEFT JOIN student_skills sk ON s.id = sk.student_id
-         WHERE s.user_id = $1
-         GROUP BY s.id`,
+         WHERE s.user_id = ?`,
         [userId]
       );
       user.student_profile = studentRes.rows[0] || null;
     } else if (user.role === 'recruiter') {
       const companyRes = await db.query(
-        `SELECT * FROM companies WHERE recruiter_id = $1`,
+        `SELECT * FROM companies WHERE recruiter_id = ?`,
         [userId]
       );
       user.companies = companyRes.rows;

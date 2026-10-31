@@ -8,6 +8,7 @@ const companyRoutes = require('./routes/companyRoutes');
 const jobRoutes = require('./routes/jobRoutes');
 const applicationRoutes = require('./routes/applicationRoutes');
 const adminRoutes = require('./routes/adminRoutes');
+const recruiterRoutes = require('./routes/recruiterRoutes');
 
 const app = express();
 
@@ -34,6 +35,9 @@ app.use('/jobs', jobRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/admin', adminRoutes);
 
+app.use('/api/recruiter', recruiterRoutes);
+app.use('/recruiter', recruiterRoutes);
+
 app.use('/api', applicationRoutes);
 app.use('/', applicationRoutes);
 
@@ -50,7 +54,7 @@ const healthHandler = async (req, res) => {
 
   res.status(200).json({
     success: true,
-    message: 'Placement Management Platform API is running',
+    message: 'Placemate student placement API is running',
     database_status: dbStatus,
     timestamp: new Date().toISOString()
   });

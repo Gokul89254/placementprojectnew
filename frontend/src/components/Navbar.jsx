@@ -11,8 +11,11 @@ import {
   LogOut, 
   User, 
   PlusCircle, 
-  CheckSquare, 
-  ShieldCheck 
+  CheckSquare,
+  ShieldCheck,
+  CalendarDays,
+  Award,
+  KeyRound
 } from 'lucide-react';
 
 const Navbar = () => {
@@ -34,11 +37,11 @@ const Navbar = () => {
           {/* Brand Logo & Title */}
           <div className="flex items-center gap-3">
             <Link to={user ? (user.role === 'student' ? '/student/dashboard' : user.role === 'recruiter' ? '/recruiter/dashboard' : '/admin/dashboard') : '/'} className="flex items-center gap-2">
-              <div className="bg-blue-600 text-white p-2 rounded-xl shadow-md">
+              <div className="bg-gradient-to-br from-blue-700 to-emerald-600 text-white p-2 rounded-xl shadow-md">
                 <GraduationCap className="w-6 h-6" />
               </div>
               <span className="font-bold text-xl text-slate-900 tracking-tight">
-                Placement<span className="text-blue-600">Hub</span>
+                Place<span className="text-emerald-600">mate</span>
               </span>
             </Link>
           </div>
@@ -116,6 +119,22 @@ const Navbar = () => {
                 >
                   <Building2 className="w-4 h-4" /> Company Profile
                 </Link>
+                <Link
+                  to="/recruiter/interviews"
+                  className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    isActive('/recruiter/interviews') ? 'bg-blue-50 text-blue-700' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                  }`}
+                >
+                  <CalendarDays className="w-4 h-4" /> Interviews
+                </Link>
+                <Link
+                  to="/recruiter/placements"
+                  className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    isActive('/recruiter/placements') ? 'bg-blue-50 text-blue-700' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                  }`}
+                >
+                  <Award className="w-4 h-4" /> Results
+                </Link>
               </>
             )}
 
@@ -161,6 +180,22 @@ const Navbar = () => {
                 >
                   <FileText className="w-4 h-4" /> Applications
                 </Link>
+                <Link
+                  to="/admin/interviews"
+                  className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    isActive('/admin/interviews') ? 'bg-blue-50 text-blue-700' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                  }`}
+                >
+                  <CalendarDays className="w-4 h-4" /> Interview oversight
+                </Link>
+                <Link
+                  to="/admin/placements"
+                  className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    isActive('/admin/placements') ? 'bg-blue-50 text-blue-700' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                  }`}
+                >
+                  <Award className="w-4 h-4" /> Placement oversight
+                </Link>
               </>
             )}
           </div>
@@ -169,6 +204,19 @@ const Navbar = () => {
           <div className="flex items-center gap-3">
             {user ? (
               <div className="flex items-center gap-3">
+                {user.role === 'admin' && (
+                  <Link
+                    to="/admin/account"
+                    aria-label="Admin account settings"
+                    title="Admin account settings"
+                    className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-sm font-medium transition-colors ${
+                      isActive('/admin/account') ? 'border-blue-200 bg-blue-50 text-blue-700' : 'border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-blue-700'
+                    }`}
+                  >
+                    <KeyRound className="h-4 w-4" />
+                    <span className="hidden sm:inline">Account</span>
+                  </Link>
+                )}
                 <div className="hidden sm:flex flex-col text-right">
                   <span className="text-sm font-semibold text-slate-900 leading-tight">{user.name}</span>
                   <span className="text-xs uppercase tracking-wider font-semibold text-blue-600">

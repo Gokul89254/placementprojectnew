@@ -1,8 +1,8 @@
-# Placement Management Platform
+# Placemate — Student Placement Management System
 
 A production-quality, interview-friendly full-stack web application designed to digitize, streamline, and automate college campus placement drives.
 
-Built from scratch using **React.js (Vite)**, **Node.js (Express.js)**, **PostgreSQL**, and **JWT Authentication**.
+Built from scratch using **React.js (Vite)**, **Node.js (Express.js)**, **MySQL**, and **JWT Authentication**.
 
 ---
 
@@ -12,18 +12,29 @@ Built from scratch using **React.js (Vite)**, **Node.js (Express.js)**, **Postgr
 - **Authentication & Profile**: Register, login, and maintain an academic profile (CGPA, department, graduation year, resume URL, and skill tags).
 - **Job Discovery & Search**: Browse active corporate placement drives with filters for location, min CGPA, department, and skills.
 - **Server-Side Eligibility Engine**: Automated evaluation verifying CGPA cutoff, graduation batch, and required skill coverage before application submission.
-- **Application Tracking**: Real-time status tracking (`Applied`, `Shortlisted`, `Selected`, `Rejected`).
+- **Application Tracking**: Real-time status tracking (`Applied`, `Shortlisted`, `Selected`, `Rejected`), interview schedules, and placement outcomes.
 
 ### 2. Recruiter Portal
 - **Corporate Company Profile**: Create and update corporate profile details.
 - **Job Posting Management**: Define job opportunities with eligibility parameters (min CGPA, graduation batch, deadline, required skills).
+- **Expected Package**: Include an optional annual salary package in LPA on job postings; students and administrators can view it.
 - **Candidate Filtering**: Search and filter applicants by CGPA, department, skills, and application status.
 - **Shortlisting & Selection Workflow**: Update candidate application statuses (`Shortlisted`, `Selected`, `Rejected`) with job ownership enforcement.
+- **Interview Scheduling**: Schedule interview rounds, modes, meeting links, locations, and completion status for applications to your jobs.
+- **Placement Results**: Report offer, acceptance, or decline outcomes, package details, and offer dates for your candidates.
 
 ### 3. Placement Cell / Admin Portal
 - **System Oversight Dashboard**: Platform metrics (Total Students, Companies, Jobs, Applications, Shortlisted, Placed).
 - **Job Approval Workflow**: Review and approve corporate job postings before making them visible to students.
 - **Directories Audit**: Audit student directory, company list, job postings, and master application log.
+- **Recruitment Oversight**: View all recruiter-managed interview schedules and placement results without editing them.
+- **Admin Account Management**: All admins can view the admin directory; only `gokulravi89254@gmail.com` can add, edit, or delete other admin accounts.
+
+### 4. Email Notifications
+- Email students when an application is received, shortlisted, rejected, or selected.
+- Email recruiters when a student applies to one of their postings.
+- Email students when an interview is scheduled, changed, or cancelled, and when an offer result is recorded or updated.
+- Notifications use SMTP and are optional: the application workflows continue if SMTP is not configured or a mail provider is temporarily unavailable.
 
 ---
 
@@ -33,7 +44,7 @@ Built from scratch using **React.js (Vite)**, **Node.js (Express.js)**, **Postgr
 | :--- | :--- |
 | **Frontend** | React 18, Vite, React Router v6, Axios, Tailwind CSS, Lucide Icons |
 | **Backend** | Node.js, Express.js (Modular MVC/Service Architecture) |
-| **Database** | PostgreSQL (`pg` Connection Pool with Parameterized SQL Queries) |
+| **Database** | MySQL (`mysql2` Connection Pool with Parameterized SQL Queries) |
 | **Authentication** | JSON Web Token (JWT), `bcryptjs` (Salt Rounds = 10) |
 | **API** | REST API Architecture |
 
@@ -51,11 +62,11 @@ Built from scratch using **React.js (Vite)**, **Node.js (Express.js)**, **Postgr
 │                    Node.js + Express.js                     │
 │  (Auth Middleware, Controllers, Services, Error Handling)   │
 └──────────────────────────────┬──────────────────────────────┘
-                               │ Parameterized SQL Queries (pg pool)
+                               │ Parameterized SQL Queries (MySQL connection pool)
 ┌──────────────────────────────▼──────────────────────────────┐
-│                    PostgreSQL Database                      │
+│                       MySQL Database                         │
 │ (users, students, student_skills, companies, job_postings,  │
-│          job_required_skills, applications)                 │
+│ applications, interview_schedules, placement_results)       │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -72,6 +83,8 @@ erDiagram
     companies ||--o{ job_postings : "1 to many"
     job_postings ||--o{ job_required_skills : "1 to many"
     job_postings ||--o{ applications : "1 to many"
+    applications ||--o{ interview_schedules : "1 to many"
+    applications ||--o| placement_results : "1 to 1"
 
     users {
         int id PK
@@ -128,6 +141,23 @@ erDiagram
         string status
         timestamp applied_at
     }
+
+    interview_schedules {
+        int id PK
+        int application_id FK
+        string round_name
+        datetime scheduled_at
+        string mode
+        string status
+    }
+
+    placement_results {
+        int id PK
+        int application_id FK, UK
+        string result_status
+        decimal package_amount
+        date offer_date
+    }
 ```
 
 ---
@@ -142,7 +172,8 @@ erDiagram
 | **Student** | `student@example.com` | `Password123` |
 | **Student 2** | `priya@example.com` | `Password123` |
 | **Recruiter** | `recruiter@example.com` | `Password123` |
-| **Admin** | `admin@example.com` | `Password123` |
+| **Major admin** | `gokulravi89254@gmail.com` | `Password123` |
+| **Recruiter (Innovate AI Labs)** | `innovate@example.com` | `Password123` |
 
 ---
 
@@ -150,21 +181,31 @@ erDiagram
 
 ### 1. Prerequisites
 - Node.js (v18+)
-- PostgreSQL installed locally
+- MySQL 8.0 installed and running locally
 
 ### 2. Environment Setup
 Clone the repository and configure backend environment variables in `backend/.env`:
 ```env
-PORT=5000
-DATABASE_URL=postgresql://postgres:postgres@localhost:5432/placement_db
-PGUSER=postgres
-PGHOST=localhost
-PGDATABASE=placement_db
-PGPASSWORD=postgres
-PGPORT=5432
+PORT=5001
+# Optional: DATABASE_URL=mysql://root:your_password@localhost:3306/placement_db
+MYSQL_HOST=localhost
+MYSQL_USER=root
+MYSQL_PASSWORD=your_mysql_password
+MYSQL_DATABASE=placement_db
+MYSQL_PORT=3306
 JWT_SECRET=placement_platform_super_secret_jwt_key_2026
 FRONTEND_URL=http://localhost:5173
+
+# Optional email notifications; use an SMTP provider's credentials (not an account login password)
+SMTP_HOST=smtp.example.com
+SMTP_PORT=587
+SMTP_SECURE=false
+SMTP_USER=your_smtp_username
+SMTP_PASSWORD=your_smtp_password
+SMTP_FROM=Placemate <no-reply@example.com>
 ```
+
+To enable notifications, copy the SMTP settings into `backend/.env` and restart the backend. For Gmail, use an App Password with SMTP access. Without valid SMTP settings, notifications are disabled and the backend logs a warning; SMTP passwords belong only in the ignored local `.env`, never in source control.
 
 ### 3. Initialize Database & Seed Demo Data
 Run the automated initialization script inside `backend/`:
@@ -174,12 +215,17 @@ npm install
 npm run db:init
 ```
 
+For an existing database, apply the non-destructive interview, placement-results, company approval, and job review migrations:
+```bash
+npm run db:migrate
+```
+
 ### 4. Start Backend Server
 ```bash
 cd backend
 npm start
 ```
-*Backend API server will run at `http://localhost:5000`*
+*Backend API server will run at `http://localhost:5001`*
 
 ### 5. Start Frontend Client
 In a separate terminal:
@@ -189,6 +235,10 @@ npm install
 npm run dev
 ```
 *Frontend application will run at `http://localhost:5173`*
+
+## 📋 Project Lifecycle & Documentation
+
+For a submission-ready project report covering the SDLC, requirements, architecture, database, workflows, security, testing, setup, and API overview, see [docs/PROJECT_DOCUMENTATION.md](./docs/PROJECT_DOCUMENTATION.md). The concise lifecycle summary is in [docs/SDLC.md](./docs/SDLC.md), and endpoint details are in [docs/API.md](./docs/API.md).
 
 ---
 
@@ -213,14 +263,14 @@ Eligibility computation strictly happens on the backend so that malicious client
 **Answer**:
 Duplicate application prevention is enforced at two distinct layers:
 1. **Application Logic Layer**: Before creating an application in `applicationService.js`, an explicit SQL query checks if an application with the given `(job_id, student_id)` already exists.
-2. **Database Constraint Layer**: The `applications` table includes a composite unique constraint `UNIQUE(job_id, student_id)`. If concurrent requests bypass the application check, PostgreSQL throws constraint violation error code `23505`, which is caught and returned as a `409 Conflict` error.
+2. **Database Constraint Layer**: The `applications` table includes a composite unique constraint `UNIQUE(job_id, student_id)`. If concurrent requests bypass the application check, MySQL rejects the duplicate and the API returns a `409 Conflict` error.
 
 ---
 
 ## 📁 Repository Structure
 
 ```
-Placement Management Platform/
+Placemate/
 ├── backend/
 │   ├── src/
 │   │   ├── config/        # Database connection pool (db.js)

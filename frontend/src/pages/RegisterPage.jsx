@@ -1,7 +1,26 @@
 import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import {
+  AlertCircle,
+  ArrowRight,
+  Award,
+  BriefcaseBusiness,
+  Building2,
+  Eye,
+  EyeOff,
+  GraduationCap,
+  LockKeyhole,
+  Mail,
+  UserRound
+} from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { GraduationCap, Lock, Mail, User, Building2, AlertCircle, ArrowRight, Award } from 'lucide-react';
+import AuthShell from '../components/AuthShell';
+
+const features = [
+  { title: 'Build your profile', icon: UserRound },
+  { title: 'Explore recruitment drives', icon: BriefcaseBusiness },
+  { title: 'Achieve your career goals', icon: Award }
+];
 
 const RegisterPage = () => {
   const [role, setRole] = useState('student');
@@ -14,18 +33,19 @@ const RegisterPage = () => {
     cgpa: 8.0,
     company_name: ''
   });
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
   const { register } = useAuth();
   const navigate = useNavigate();
 
-  const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+  const handleChange = (event) => {
+    setFormData({ ...formData, [event.target.name]: event.target.value });
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const handleSubmit = async (event) => {
+    event.preventDefault();
     setError('');
     setSubmitting(true);
 
@@ -34,175 +54,150 @@ const RegisterPage = () => {
       if (user.role === 'student') navigate('/student/dashboard');
       else if (user.role === 'recruiter') navigate('/recruiter/dashboard');
       else navigate('/');
-    } catch (err) {
-      setError(err.response?.data?.message || 'Registration failed. Please try again.');
+    } catch (requestError) {
+      setError(requestError.response?.data?.message || 'Registration failed. Please try again.');
     } finally {
       setSubmitting(false);
     }
   };
 
+  const inputClass = 'block h-11 w-full rounded-lg border border-slate-300 bg-white pl-10 pr-4 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-100';
+  const selectClass = 'block h-11 w-full appearance-none rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-800 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100';
+
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
-      <div className="sm:mx-auto sm:w-full sm:max-w-md text-center">
-        <div className="inline-flex items-center justify-center p-3 bg-blue-600 text-white rounded-2xl shadow-md mb-4">
-          <GraduationCap className="w-8 h-8" />
-        </div>
-        <h2 className="text-3xl font-extrabold text-slate-900 tracking-tight">Create your account</h2>
-        <p className="mt-2 text-sm text-slate-600">
-          Already have an account?{' '}
-          <Link to="/login" className="font-semibold text-blue-600 hover:text-blue-500">
-            Sign in
-          </Link>
-        </p>
+    <AuthShell
+      formSize="max-w-[560px]"
+      title="Start Your Career Journey"
+      subtitle="Join Placemate and explore opportunities for your future."
+      features={features}
+    >
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight text-slate-900">Create your account</h1>
+        <p className="mt-1.5 text-sm text-slate-500">Register to get started with Placemate.</p>
       </div>
 
-      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="bg-white py-8 px-4 shadow-sm border border-slate-200 sm:rounded-2xl sm:px-10">
-          {error && (
-            <div className="mb-6 p-4 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm flex items-start gap-3">
-              <AlertCircle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
-              <span>{error}</span>
-            </div>
-          )}
+      {error && (
+        <div role="alert" className="mt-4 flex items-start gap-2.5 rounded-lg border border-red-200 bg-red-50 px-3.5 py-3 text-sm text-red-800">
+          <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-red-600" />
+          <div><p className="font-bold">Unable to create account</p><p className="mt-0.5 leading-5">{error}</p></div>
+        </div>
+      )}
 
-          {/* Role Toggle */}
-          <div className="mb-6 p-1 bg-slate-100 rounded-xl flex">
-            <button
-              type="button"
-              onClick={() => setRole('student')}
-              className={`flex-1 py-2 text-xs font-bold rounded-lg transition-colors flex items-center justify-center gap-1.5 ${
-                role === 'student' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              <GraduationCap className="w-4 h-4" /> Student
-            </button>
-            <button
-              type="button"
-              onClick={() => setRole('recruiter')}
-              className={`flex-1 py-2 text-xs font-bold rounded-lg transition-colors flex items-center justify-center gap-1.5 ${
-                role === 'recruiter' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              <Building2 className="w-4 h-4" /> Recruiter
+      <div className="mt-5 grid grid-cols-2 gap-3" role="group" aria-label="Choose account type">
+        <button
+          type="button"
+          onClick={() => setRole('student')}
+          aria-pressed={role === 'student'}
+          className={`flex items-center gap-3 rounded-lg border p-3 text-left transition ${
+            role === 'student'
+              ? 'border-blue-300 bg-blue-50/80 ring-2 ring-blue-500/15'
+              : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'
+          }`}
+        >
+          <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${role === 'student' ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-500'}`}>
+            <GraduationCap className="h-5 w-5" />
+          </span>
+          <span><span className={`block text-sm font-bold ${role === 'student' ? 'text-blue-900' : 'text-slate-700'}`}>Student</span><span className="mt-0.5 block text-[11px] text-slate-500">Find your next role</span></span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setRole('recruiter')}
+          aria-pressed={role === 'recruiter'}
+          className={`flex items-center gap-3 rounded-lg border p-3 text-left transition ${
+            role === 'recruiter'
+              ? 'border-emerald-300 bg-emerald-50/80 ring-2 ring-emerald-500/15'
+              : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'
+          }`}
+        >
+          <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${role === 'recruiter' ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-500'}`}>
+            <Building2 className="h-5 w-5" />
+          </span>
+          <span><span className={`block text-sm font-bold ${role === 'recruiter' ? 'text-emerald-900' : 'text-slate-700'}`}>Recruiter</span><span className="mt-0.5 block text-[11px] text-slate-500">Connect with talent</span></span>
+        </button>
+      </div>
+
+      <form className="mt-5 space-y-4" onSubmit={handleSubmit}>
+        <div>
+          <label htmlFor="register-name" className="mb-1.5 block text-sm font-medium text-slate-700">Full name</label>
+          <div className="relative">
+            <UserRound className="pointer-events-none absolute left-3 top-3.5 h-4 w-4 text-slate-400" />
+            <input id="register-name" type="text" name="name" autoComplete="name" required value={formData.name} onChange={handleChange} placeholder="Your full name" className={inputClass} />
+          </div>
+        </div>
+
+        <div>
+          <label htmlFor="register-email" className="mb-1.5 block text-sm font-medium text-slate-700">Email address</label>
+          <div className="relative">
+            <Mail className="pointer-events-none absolute left-3 top-3.5 h-4 w-4 text-slate-400" />
+            <input id="register-email" type="email" name="email" autoComplete="email" required value={formData.email} onChange={handleChange} placeholder="you@example.com" className={inputClass} />
+          </div>
+        </div>
+
+        <div>
+          <label htmlFor="register-password" className="mb-1.5 block text-sm font-medium text-slate-700">Password</label>
+          <div className="relative">
+            <LockKeyhole className="pointer-events-none absolute left-3 top-3.5 h-4 w-4 text-slate-400" />
+            <input id="register-password" type={showPassword ? 'text' : 'password'} name="password" autoComplete="new-password" required minLength={6} value={formData.password} onChange={handleChange} placeholder="At least 6 characters" className={`${inputClass} pr-11`} />
+            <button type="button" onClick={() => setShowPassword(value => !value)} aria-label={showPassword ? 'Hide password' : 'Show password'} className="absolute right-2.5 top-2.5 rounded-md p-1 text-slate-400 transition hover:text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
+              {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
             </button>
           </div>
-
-          <form className="space-y-4" onSubmit={handleSubmit}>
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">Full Name</label>
-              <input
-                type="text"
-                name="name"
-                required
-                value={formData.name}
-                onChange={handleChange}
-                placeholder="John Doe"
-                className="block w-full px-3 py-2 border border-slate-300 rounded-xl text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">Email Address</label>
-              <input
-                type="email"
-                name="email"
-                required
-                value={formData.email}
-                onChange={handleChange}
-                placeholder="name@example.com"
-                className="block w-full px-3 py-2 border border-slate-300 rounded-xl text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">Password</label>
-              <input
-                type="password"
-                name="password"
-                required
-                minLength={6}
-                value={formData.password}
-                onChange={handleChange}
-                placeholder="••••••••"
-                className="block w-full px-3 py-2 border border-slate-300 rounded-xl text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600"
-              />
-            </div>
-
-            {role === 'student' && (
-              <>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">Department</label>
-                    <select
-                      name="department"
-                      value={formData.department}
-                      onChange={handleChange}
-                      className="block w-full px-3 py-2 border border-slate-300 rounded-xl text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600"
-                    >
-                      <option value="Computer Science">Computer Science</option>
-                      <option value="Information Technology">Information Tech</option>
-                      <option value="Electronics & Comm">Electronics & Comm</option>
-                      <option value="Mechanical Eng">Mechanical Eng</option>
-                      <option value="Civil Eng">Civil Eng</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">Graduation Year</label>
-                    <input
-                      type="number"
-                      name="graduation_year"
-                      required
-                      value={formData.graduation_year}
-                      onChange={handleChange}
-                      className="block w-full px-3 py-2 border border-slate-300 rounded-xl text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">CGPA (0.0 - 10.0)</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    max="10"
-                    name="cgpa"
-                    required
-                    value={formData.cgpa}
-                    onChange={handleChange}
-                    className="block w-full px-3 py-2 border border-slate-300 rounded-xl text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600"
-                  />
-                </div>
-              </>
-            )}
-
-            {role === 'recruiter' && (
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Company Name</label>
-                <input
-                  type="text"
-                  name="company_name"
-                  required
-                  value={formData.company_name}
-                  onChange={handleChange}
-                  placeholder="e.g. Acme Tech Solutions"
-                  className="block w-full px-3 py-2 border border-slate-300 rounded-xl text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600"
-                />
-              </div>
-            )}
-
-            <button
-              type="submit"
-              disabled={submitting}
-              className="w-full flex justify-center items-center gap-2 mt-4 py-3 px-4 border border-transparent rounded-xl shadow-sm text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 transition-colors"
-            >
-              {submitting ? 'Creating account...' : `Register as ${role === 'student' ? 'Student' : 'Recruiter'}`}
-              <ArrowRight className="w-4 h-4" />
-            </button>
-          </form>
+          <p className="mt-1.5 text-xs text-slate-400">Use at least 6 characters.</p>
         </div>
-      </div>
-    </div>
+
+        {role === 'student' && (
+          <>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div>
+                <label htmlFor="register-department" className="mb-1.5 block text-sm font-medium text-slate-700">Department</label>
+                <select id="register-department" name="department" value={formData.department} onChange={handleChange} className={selectClass}>
+                  <option value="Computer Science">Computer Science</option>
+                  <option value="Information Technology">Information Tech</option>
+                  <option value="Electronics & Comm">Electronics &amp; Comm</option>
+                  <option value="Mechanical Eng">Mechanical Eng</option>
+                  <option value="Civil Eng">Civil Eng</option>
+                </select>
+              </div>
+              <div>
+                <label htmlFor="register-year" className="mb-1.5 block text-sm font-medium text-slate-700">Graduation year</label>
+                <input id="register-year" type="number" name="graduation_year" required value={formData.graduation_year} onChange={handleChange} className={`${selectClass} px-3`} />
+              </div>
+            </div>
+            <div>
+              <label htmlFor="register-cgpa" className="mb-1.5 block text-sm font-medium text-slate-700">CGPA <span className="font-normal text-slate-400">(0.0–10.0)</span></label>
+              <div className="relative">
+                <Award className="pointer-events-none absolute left-3 top-3.5 h-4 w-4 text-slate-400" />
+                <input id="register-cgpa" type="number" step="0.01" min="0" max="10" name="cgpa" required value={formData.cgpa} onChange={handleChange} className={inputClass} />
+              </div>
+            </div>
+          </>
+        )}
+
+        {role === 'recruiter' && (
+          <div>
+            <label htmlFor="register-company" className="mb-1.5 block text-sm font-medium text-slate-700">Company name</label>
+            <div className="relative">
+              <BriefcaseBusiness className="pointer-events-none absolute left-3 top-3.5 h-4 w-4 text-slate-400" />
+              <input id="register-company" type="text" name="company_name" required value={formData.company_name} onChange={handleChange} placeholder="Your organization" className={inputClass} />
+            </div>
+          </div>
+        )}
+
+        <button
+          type="submit"
+          disabled={submitting}
+          className="group mt-2 flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-300 focus:ring-offset-1 disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          {submitting ? 'Creating account…' : `Create ${role === 'student' ? 'student' : 'recruiter'} account`}
+          {!submitting && <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />}
+        </button>
+      </form>
+
+      <p className="mt-6 text-center text-sm text-slate-500">
+        Already have an account?{' '}
+        <Link to="/login" className="font-bold text-blue-700 transition hover:text-blue-900">Sign in</Link>
+      </p>
+    </AuthShell>
   );
 };
 

@@ -6,6 +6,7 @@ import { Building2, Save, CheckCircle2, AlertCircle, User } from 'lucide-react';
 const CompanyProfile = () => {
   const { user, updateUserProfileState } = useAuth();
   const [companyId, setCompanyId] = useState(null);
+  const [companyStatus, setCompanyStatus] = useState('');
 
   const [formData, setFormData] = useState({
     recruiter_name: '',
@@ -30,6 +31,7 @@ const CompanyProfile = () => {
         if (companies.length > 0) {
           const comp = companies[0];
           setCompanyId(comp.id);
+          setCompanyStatus(comp.status || 'pending');
           setFormData({
             recruiter_name: currentUser.name || '',
             recruiter_email: currentUser.email || '',
@@ -68,6 +70,7 @@ const CompanyProfile = () => {
       if (companyId) {
         const res = await API.put(`/companies/${companyId}`, formData);
         const updatedComp = res.data.data.company;
+        setCompanyStatus(updatedComp.status || companyStatus);
 
         if (user) {
           updateUserProfileState({
@@ -81,7 +84,8 @@ const CompanyProfile = () => {
       } else {
         const res = await API.post('/companies', formData);
         setCompanyId(res.data.data.company.id);
-        setMessage({ type: 'success', text: 'Company profile created successfully!' });
+        setCompanyStatus(res.data.data.company.status || 'pending');
+        setMessage({ type: 'success', text: 'Company profile submitted. An admin must approve it before you can post jobs.' });
       }
     } catch (err) {
       setMessage({ type: 'error', text: err.response?.data?.message || 'Failed to save company profile.' });
@@ -110,6 +114,17 @@ const CompanyProfile = () => {
             <p className="text-xs text-slate-500">Edit your recruiter contact details and official corporate profile</p>
           </div>
         </div>
+
+        {companyStatus && (
+          <div className={`mb-6 rounded-xl border p-4 text-sm ${
+            companyStatus === 'approved' ? 'border-emerald-200 bg-emerald-50 text-emerald-800' :
+            companyStatus === 'rejected' ? 'border-red-200 bg-red-50 text-red-800' :
+            'border-amber-200 bg-amber-50 text-amber-800'
+          }`}>
+            Company review status: <strong className="uppercase">{companyStatus}</strong>
+            {companyStatus !== 'approved' && ' — job posting is unavailable until an admin approves this company.'}
+          </div>
+        )}
 
         {message.text && (
           <div className={`mb-6 p-4 rounded-xl text-sm flex items-center gap-2 ${

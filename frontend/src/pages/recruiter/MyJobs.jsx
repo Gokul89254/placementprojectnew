@@ -55,7 +55,7 @@ const MyJobs = () => {
           <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight flex items-center gap-2">
             <Briefcase className="w-7 h-7 text-blue-600" /> Manage Corporate Job Postings
           </h1>
-          <p className="text-slate-500 text-sm mt-1">Create, update criteria, and track candidate applications.</p>
+          <p className="text-slate-500 text-sm mt-1">New postings are sent to an admin for review and appear to students only after approval.</p>
         </div>
         <Link
           to="/recruiter/jobs/create"
@@ -76,13 +76,19 @@ const MyJobs = () => {
               <div>
                 <div className="flex justify-between items-start mb-2">
                   <h3 className="font-bold text-slate-900 text-lg">{job.title}</h3>
-                  <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase bg-emerald-100 text-emerald-800">
+                  <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase ${
+                    job.status === 'approved' ? 'bg-emerald-100 text-emerald-800' :
+                    job.status === 'pending' ? 'bg-amber-100 text-amber-800' :
+                    job.status === 'rejected' ? 'bg-red-100 text-red-800' :
+                    'bg-slate-100 text-slate-700'
+                  }`}>
                     {job.status}
                   </span>
                 </div>
 
                 <div className="space-y-1 text-xs text-slate-600 mb-4">
                   <p className="flex items-center gap-1.5"><MapPin className="w-3.5 h-3.5 text-slate-400" /> {job.location} ({job.employment_type})</p>
+                  <p className="flex items-center gap-1.5"><Briefcase className="w-3.5 h-3.5 text-slate-400" /> Package: <span className="font-bold text-slate-900">{job.expected_package === null || job.expected_package === undefined ? 'Not disclosed' : `${Number(job.expected_package).toFixed(2)} LPA`}</span></p>
                   <p className="flex items-center gap-1.5"><Award className="w-3.5 h-3.5 text-slate-400" /> Min CGPA: <span className="font-bold text-slate-900">{parseFloat(job.minimum_cgpa).toFixed(2)}</span></p>
                   <p className="flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5 text-slate-400" /> Deadline: {new Date(job.deadline).toLocaleDateString()}</p>
                 </div>
@@ -97,20 +103,27 @@ const MyJobs = () => {
               </div>
 
               <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
-                <Link
-                  to={`/recruiter/jobs/${job.id}/applicants`}
-                  className="px-3 py-1.5 bg-blue-600 text-white hover:bg-blue-700 rounded-lg text-xs font-bold inline-flex items-center gap-1 transition-colors"
-                >
-                  <Users className="w-3.5 h-3.5" /> Applicants
-                </Link>
-
-                <button
-                  onClick={() => handleDeleteJob(job.id)}
-                  className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                  title="Delete Job"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
+                <div className="flex items-center gap-2">
+                  <Link
+                    to={`/recruiter/jobs/${job.id}/applicants`}
+                    className="px-3 py-1.5 bg-blue-600 text-white hover:bg-blue-700 rounded-lg text-xs font-bold inline-flex items-center gap-1 transition-colors"
+                  >
+                    <Users className="w-3.5 h-3.5" /> Applicants
+                  </Link>
+                  <Link
+                    to={`/recruiter/jobs/${job.id}/edit`}
+                    className="px-3 py-1.5 bg-slate-100 text-slate-700 hover:bg-blue-50 hover:text-blue-700 rounded-lg text-xs font-bold inline-flex items-center gap-1 transition-colors"
+                  >
+                    <Edit className="w-3.5 h-3.5" /> Edit
+                  </Link>
+                  <button
+                    onClick={() => handleDeleteJob(job.id)}
+                    className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                    title="Delete Job"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
             </div>
           ))

@@ -1,17 +1,18 @@
 {
-  "name": "placement-platform-backend",
+  "name": "placemate-backend",
   "version": "1.0.0",
-  "description": "Backend API for Full-Stack Placement Management Platform",
+  "description": "Placemate Student Placement Management API",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
     "dev": "node --watch server.js",
     "db:init": "node src/db/initDb.js",
+    "db:migrate": "node src/db/migrate.js",
     "test": "node --test tests/**/*.test.js"
   },
   "keywords": [
     "express",
-    "postgresql",
+    "mysql",
     "placement-management",
     "jwt",
     "rest-api"
@@ -24,6 +25,7 @@
     "dotenv": "^16.4.5",
     "express": "^4.19.2",
     "jsonwebtoken": "^9.0.2",
-    "pg": "^8.12.0"
+    "mysql2": "^3.24.6",
+    "nodemailer": "^10.2.1"
   }
 }

@@ -1,4 +1,5 @@
 const { verifyToken } = require('../utils/token');
+const { MAJOR_ADMIN_EMAIL } = require('../constants/admin');
 
 /**
  * Middleware to authenticate requests using JWT Bearer Token
@@ -54,7 +55,28 @@ const requireRole = (...allowedRoles) => {
   };
 };
 
+const requireMajorAdmin = (req, res, next) => {
+  if (!req.user || req.user.role !== 'admin') {
+    return res.status(403).json({
+      success: false,
+      message: 'Only the major administrator can manage admin accounts.',
+      errors: ['MAJOR_ADMIN_REQUIRED']
+    });
+  }
+
+  if (req.user.email?.toLowerCase() !== MAJOR_ADMIN_EMAIL) {
+    return res.status(403).json({
+      success: false,
+      message: 'Only the major administrator can manage admin accounts.',
+      errors: ['MAJOR_ADMIN_REQUIRED']
+    });
+  }
+
+  next();
+};
+
 module.exports = {
   authenticateToken,
-  requireRole
+  requireRole,
+  requireMajorAdmin
 };

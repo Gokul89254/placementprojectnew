@@ -1,4 +1,5 @@
 const db = require('../config/db');
+const emailNotificationService = require('./emailNotificationService');
 
 class JobService {
   /**
@@ -12,29 +13,30 @@ class JobService {
     // Filter status: Students see approved jobs only, recruiters see their status, admins can see all
     if (userRole === 'student') {
       whereClauses.push(`j.status = 'approved'`);
+      whereClauses.push(`c.status = 'approved'`);
     } else if (status) {
       queryValues.push(status);
-      whereClauses.push(`j.status = $${queryValues.length}`);
+      whereClauses.push('j.status = ?');
     }
 
     if (search) {
-      queryValues.push(`%${search}%`);
-      whereClauses.push(`(j.title ILIKE $${queryValues.length} OR j.description ILIKE $${queryValues.length} OR c.company_name ILIKE $${queryValues.length})`);
+      whereClauses.push('(LOWER(j.title) LIKE LOWER(?) OR LOWER(j.description) LIKE LOWER(?) OR LOWER(c.company_name) LIKE LOWER(?))');
+      queryValues.push(`%${search}%`, `%${search}%`, `%${search}%`);
     }
 
     if (location) {
       queryValues.push(`%${location}%`);
-      whereClauses.push(`j.location ILIKE $${queryValues.length}`);
+      whereClauses.push('LOWER(j.location) LIKE LOWER(?)');
     }
 
     if (minCgpa) {
       queryValues.push(parseFloat(minCgpa));
-      whereClauses.push(`j.minimum_cgpa <= $${queryValues.length}`);
+      whereClauses.push('j.minimum_cgpa <= ?');
     }
 
     if (companyId) {
       queryValues.push(parseInt(companyId, 10));
-      whereClauses.push(`j.company_id = $${queryValues.length}`);
+      whereClauses.push('j.company_id = ?');
     }
 
     const whereString = whereClauses.length > 0 ? `WHERE ${whereClauses.join(' AND ')}` : '';
@@ -45,11 +47,12 @@ class JobService {
         c.company_name,
         c.website AS company_website,
         c.location AS company_location,
-        ARRAY_AGG(DISTINCT sk.skill_name) FILTER (WHERE sk.skill_name IS NOT NULL) AS required_skills,
+        (SELECT JSON_ARRAYAGG(sk.skill_name)
+         FROM job_required_skills sk
+         WHERE sk.job_id = j.id) AS required_skills,
         COUNT(DISTINCT a.id) AS total_applications
       FROM job_postings j
       JOIN companies c ON j.company_id = c.id
-      LEFT JOIN job_required_skills sk ON j.id = sk.job_id
       LEFT JOIN applications a ON j.id = a.job_id
       ${whereString}
       GROUP BY j.id, c.id
@@ -83,12 +86,12 @@ class JobService {
         c.website AS company_website,
         c.location AS company_location,
         c.recruiter_id,
-        ARRAY_AGG(DISTINCT sk.skill_name) FILTER (WHERE sk.skill_name IS NOT NULL) AS required_skills
-      FROM job_postings j
-      JOIN companies c ON j.company_id = c.id
-      LEFT JOIN job_required_skills sk ON j.id = sk.job_id
-      WHERE j.id = $1
-      GROUP BY j.id, c.id
+        (SELECT JSON_ARRAYAGG(sk.skill_name)
+         FROM job_required_skills sk
+         WHERE sk.job_id = j.id) AS required_skills
+        FROM job_postings j
+        JOIN companies c ON j.company_id = c.id
+        WHERE j.id = ?
     `;
 
     const res = await db.query(sql, [jobId]);
@@ -104,15 +107,24 @@ class JobService {
   /**
    * Create new job posting (Recruiter)
    */
-  async createJob(recruiterUserId, role, { company_id, title, description, location, employment_type, minimum_cgpa, graduation_year, deadline, required_skills }) {
+  async createJob(recruiterUserId, role, { company_id, title, description, location, employment_type, minimum_cgpa, expected_package, graduation_year, deadline, required_skills }) {
     if (!company_id || !title || !description || !location || !graduation_year || !deadline) {
       const error = new Error('Missing required job fields');
       error.status = 400;
       throw error;
     }
 
+    const expectedPackage = expected_package === '' || expected_package === undefined || expected_package === null
+      ? null
+      : Number(expected_package);
+    if (expectedPackage !== null && (!Number.isFinite(expectedPackage) || expectedPackage < 0)) {
+      const error = new Error('Expected package must be a non-negative annual amount');
+      error.status = 400;
+      throw error;
+    }
+
     // Verify company ownership
-    const companyRes = await db.query('SELECT recruiter_id FROM companies WHERE id = $1', [company_id]);
+    const companyRes = await db.query('SELECT recruiter_id, status FROM companies WHERE id = ?', [company_id]);
     if (companyRes.rowCount === 0) {
       const error = new Error('Specified company does not exist');
       error.status = 404;
@@ -124,17 +136,22 @@ class JobService {
       error.status = 403;
       throw error;
     }
+    if (role === 'recruiter' && companyRes.rows[0].status !== 'approved') {
+      const error = new Error('Your company profile must be approved by an admin before posting jobs');
+      error.status = 409;
+      throw error;
+    }
 
     const client = await db.pool.connect();
     try {
       await client.query('BEGIN');
 
-      const jobStatus = 'approved'; // Default to approved for demo usability
+      const jobStatus = role === 'admin' ? 'approved' : 'pending';
 
       const jobRes = await client.query(
-        `INSERT INTO job_postings (company_id, title, description, location, employment_type, minimum_cgpa, graduation_year, deadline, status)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-         RETURNING *`,
+        `INSERT INTO job_postings (company_id, title, description, location, employment_type, minimum_cgpa, expected_package, graduation_year, deadline, status)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+         `,
         [
           company_id,
           title.trim(),
@@ -142,19 +159,21 @@ class JobService {
           location.trim(),
           employment_type || 'Full-Time',
           minimum_cgpa ? parseFloat(minimum_cgpa) : 0.00,
+          expectedPackage,
           parseInt(graduation_year, 10),
           deadline,
           jobStatus
         ]
       );
 
-      const newJob = jobRes.rows[0];
+      const insertedJob = await client.query('SELECT * FROM job_postings WHERE id = ?', [jobRes.insertId]);
+      const newJob = insertedJob.rows[0];
 
       if (Array.isArray(required_skills)) {
         for (const skill of required_skills) {
           if (skill && skill.trim()) {
             await client.query(
-              `INSERT INTO job_required_skills (job_id, skill_name) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
+              `INSERT IGNORE INTO job_required_skills (job_id, skill_name) VALUES (?, ?)`,
               [newJob.id, skill.trim()]
             );
           }
@@ -162,7 +181,19 @@ class JobService {
       }
 
       await client.query('COMMIT');
-      return this.getJobById(newJob.id);
+      const createdJob = await this.getJobById(newJob.id);
+      if (role === 'recruiter') {
+        const admins = await db.query("SELECT email FROM users WHERE role = 'admin'");
+        await emailNotificationService.sendJobPendingReview({
+          admin_emails: admins.rows.map(admin => admin.email),
+          job_id: createdJob.id,
+          job_title: createdJob.title,
+          company_name: createdJob.company_name,
+          location: createdJob.location,
+          deadline: createdJob.deadline
+        });
+      }
+      return createdJob;
     } catch (err) {
       await client.query('ROLLBACK');
       throw err;
@@ -174,7 +205,7 @@ class JobService {
   /**
    * Update existing job posting
    */
-  async updateJob(jobId, recruiterUserId, role, { title, description, location, employment_type, minimum_cgpa, graduation_year, deadline, status, required_skills }) {
+  async updateJob(jobId, recruiterUserId, role, { title, description, location, employment_type, minimum_cgpa, expected_package, graduation_year, deadline, status, required_skills }) {
     const job = await this.getJobById(jobId);
 
     if (job.recruiter_id !== recruiterUserId && role !== 'admin') {
@@ -187,27 +218,39 @@ class JobService {
     try {
       await client.query('BEGIN');
 
+      const expectedPackage = expected_package === undefined
+        ? job.expected_package
+        : expected_package === '' || expected_package === null
+          ? null
+          : Number(expected_package);
+      if (expectedPackage !== null && (!Number.isFinite(expectedPackage) || expectedPackage < 0)) {
+        const error = new Error('Expected package must be a non-negative annual amount');
+        error.status = 400;
+        throw error;
+      }
+
       await client.query(
         `UPDATE job_postings
-         SET title = COALESCE($1, title),
-             description = COALESCE($2, description),
-             location = COALESCE($3, location),
-             employment_type = COALESCE($4, employment_type),
-             minimum_cgpa = COALESCE($5, minimum_cgpa),
-             graduation_year = COALESCE($6, graduation_year),
-             deadline = COALESCE($7, deadline),
-             status = COALESCE($8, status),
+         SET title = COALESCE(?, title),
+             description = COALESCE(?, description),
+             location = COALESCE(?, location),
+             employment_type = COALESCE(?, employment_type),
+             minimum_cgpa = COALESCE(?, minimum_cgpa),
+             expected_package = ?,
+             graduation_year = COALESCE(?, graduation_year),
+             deadline = COALESCE(?, deadline),
+             status = COALESCE(?, status),
              updated_at = CURRENT_TIMESTAMP
-         WHERE id = $9`,
-        [title, description, location, employment_type, minimum_cgpa, graduation_year, deadline, status, jobId]
+         WHERE id = ?`,
+        [title, description, location, employment_type, minimum_cgpa, expectedPackage, graduation_year, deadline, status, jobId]
       );
 
       if (Array.isArray(required_skills)) {
-        await client.query('DELETE FROM job_required_skills WHERE job_id = $1', [jobId]);
+        await client.query('DELETE FROM job_required_skills WHERE job_id = ?', [jobId]);
         for (const skill of required_skills) {
           if (skill && skill.trim()) {
             await client.query(
-              `INSERT INTO job_required_skills (job_id, skill_name) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
+              `INSERT IGNORE INTO job_required_skills (job_id, skill_name) VALUES (?, ?)`,
               [jobId, skill.trim()]
             );
           }
@@ -235,7 +278,7 @@ class JobService {
       throw error;
     }
 
-    await db.query('DELETE FROM job_postings WHERE id = $1', [jobId]);
+    await db.query('DELETE FROM job_postings WHERE id = ?', [jobId]);
     return { id: jobId, message: 'Job posting deleted successfully' };
   }
 
@@ -251,7 +294,7 @@ class JobService {
       `SELECT s.*, u.name, u.email
        FROM students s
        JOIN users u ON s.user_id = u.id
-       WHERE s.user_id = $1`,
+       WHERE s.user_id = ?`,
       [studentUserId]
     );
 
@@ -264,7 +307,7 @@ class JobService {
     const student = studentRes.rows[0];
 
     const skillsRes = await db.query(
-      `SELECT skill_name FROM student_skills WHERE student_id = $1`,
+      `SELECT skill_name FROM student_skills WHERE student_id = ?`,
       [student.id]
     );
     const studentSkills = skillsRes.rows.map(r => r.skill_name.toLowerCase());

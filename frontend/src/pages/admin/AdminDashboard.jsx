@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import API from '../../services/api';
-import { GraduationCap, Building2, Briefcase, FileText, CheckCircle2, Award, Clock, ArrowRight, ShieldCheck, CheckSquare } from 'lucide-react';
+import { GraduationCap, Building2, Briefcase, FileText, CheckCircle2, Award, Clock, ArrowRight, ShieldCheck, CheckSquare, CalendarDays } from 'lucide-react';
 
 const AdminDashboard = () => {
   const [metrics, setMetrics] = useState(null);
@@ -50,7 +50,7 @@ const AdminDashboard = () => {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
       {/* Header Banner */}
-      <div className="bg-gradient-to-r from-blue-900 via-indigo-900 to-slate-900 rounded-3xl p-6 sm:p-8 text-white shadow-md flex justify-between items-center">
+      <div className="bg-gradient-to-r from-blue-800 via-blue-700 to-emerald-700 rounded-3xl p-6 sm:p-8 text-white shadow-md flex justify-between items-center">
         <div>
           <span className="text-xs font-semibold px-3 py-1 bg-white/10 rounded-full text-emerald-300 inline-block mb-2">
             Placement Cell Oversight
@@ -61,7 +61,7 @@ const AdminDashboard = () => {
       </div>
 
       {/* Platform Metric Grid */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
           <p className="text-xs font-semibold text-slate-500 uppercase">Students</p>
           <h3 className="text-2xl font-bold text-slate-900 mt-1">{metrics?.total_students}</h3>
@@ -70,6 +70,9 @@ const AdminDashboard = () => {
         <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
           <p className="text-xs font-semibold text-slate-500 uppercase">Companies</p>
           <h3 className="text-2xl font-bold text-slate-900 mt-1">{metrics?.total_companies}</h3>
+          <Link to="/admin/companies" className="mt-2 inline-flex text-xs font-semibold text-blue-600 hover:text-blue-700">
+            {metrics?.pending_companies_count || 0} pending approval
+          </Link>
         </div>
 
         <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
@@ -91,6 +94,27 @@ const AdminDashboard = () => {
           <p className="text-xs font-semibold text-emerald-600 uppercase">Selections</p>
           <h3 className="text-2xl font-bold text-emerald-700 mt-1">{metrics?.total_selected}</h3>
         </div>
+
+        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+          <p className="text-xs font-semibold text-blue-600 uppercase">Scheduled Interviews</p>
+          <h3 className="text-2xl font-bold text-blue-700 mt-1">{metrics?.scheduled_interviews}</h3>
+        </div>
+
+        <div className="bg-white p-5 rounded-2xl border border-emerald-200 shadow-sm">
+          <p className="text-xs font-semibold text-emerald-600 uppercase">Accepted Offers</p>
+          <h3 className="text-2xl font-bold text-emerald-700 mt-1">{metrics?.total_placements}</h3>
+        </div>
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Link to="/admin/interviews" className="flex items-center justify-between rounded-2xl border border-blue-100 bg-white p-5 shadow-sm transition hover:border-blue-300 hover:bg-blue-50/50">
+          <span className="flex items-center gap-3"><CalendarDays className="h-5 w-5 text-blue-700" /><span><span className="block font-bold text-slate-900">View interview schedules</span><span className="text-xs text-slate-500">Review recruiter-managed interview rounds</span></span></span>
+          <ArrowRight className="h-4 w-4 text-blue-700" />
+        </Link>
+        <Link to="/admin/placements" className="flex items-center justify-between rounded-2xl border border-emerald-100 bg-white p-5 shadow-sm transition hover:border-emerald-300 hover:bg-emerald-50/50">
+          <span className="flex items-center gap-3"><Award className="h-5 w-5 text-emerald-700" /><span><span className="block font-bold text-slate-900">View placement results</span><span className="text-xs text-slate-500">Review outcomes reported by recruiters</span></span></span>
+          <ArrowRight className="h-4 w-4 text-emerald-700" />
+        </Link>
       </div>
 
       {/* Job Approval Queue */}
@@ -141,7 +165,7 @@ const AdminDashboard = () => {
                           Approve Job
                         </button>
                         <button
-                          onClick={() => handleApproveJob(job.id, 'closed')}
+                          onClick={() => handleApproveJob(job.id, 'rejected')}
                           className="px-3 py-1.5 bg-red-50 text-red-700 hover:bg-red-100 rounded-lg text-xs font-bold transition-colors"
                         >
                           Reject

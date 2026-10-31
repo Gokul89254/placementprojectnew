@@ -194,6 +194,9 @@ const JobListings = () => {
                       <Award className="w-3.5 h-3.5 text-slate-400" /> Min CGPA: <span className="font-bold text-slate-900">{parseFloat(job.minimum_cgpa).toFixed(2)}</span>
                     </p>
                     <p className="flex items-center gap-1.5">
+                      <Briefcase className="w-3.5 h-3.5 text-slate-400" /> Package: <span className="font-bold text-slate-900">{job.expected_package === null || job.expected_package === undefined ? 'Not disclosed' : `${Number(job.expected_package).toFixed(2)} LPA`}</span>
+                    </p>
+                    <p className="flex items-center gap-1.5">
                       <Calendar className="w-3.5 h-3.5 text-slate-400" /> Deadline: <span className="font-semibold text-slate-800">{new Date(job.deadline).toLocaleDateString()}</span>
                     </p>
                   </div>
@@ -248,6 +251,7 @@ const JobListings = () => {
             <div className="text-xs text-slate-600 space-y-2">
               <p className="font-semibold text-slate-900 text-sm">Job Description:</p>
               <p className="leading-relaxed bg-slate-50 p-3 rounded-xl border border-slate-200">{selectedJob.description}</p>
+              <p className="font-semibold text-slate-900">Expected package: <span className="font-normal text-slate-600">{selectedJob.expected_package === null || selectedJob.expected_package === undefined ? 'Not disclosed' : `${Number(selectedJob.expected_package).toFixed(2)} LPA`}</span></p>
             </div>
 
             {/* Server-Side Eligibility Status Box */}

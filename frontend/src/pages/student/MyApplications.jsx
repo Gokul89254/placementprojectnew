@@ -53,6 +53,8 @@ const MyApplications = () => {
                   <th className="py-4 px-6">Location</th>
                   <th className="py-4 px-6">Applied Date</th>
                   <th className="py-4 px-6 text-center">Status</th>
+                  <th className="py-4 px-6">Interview schedule</th>
+                  <th className="py-4 px-6">Placement result</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-200 text-sm">
@@ -80,6 +82,31 @@ const MyApplications = () => {
                         {app.status === 'applied' && <CheckCircle2 className="w-3.5 h-3.5 text-blue-600" />}
                         {app.status}
                       </span>
+                    </td>
+                    <td className="px-6 py-4">
+                      {(app.interviews || []).length === 0 ? <span className="text-xs text-slate-400">Not scheduled</span> : (
+                        <div className="space-y-2">
+                          {app.interviews.map(interview => (
+                            <div key={interview.id} className="text-xs">
+                              <span className="font-semibold text-slate-800">{interview.round_name}</span>
+                              <span className="block text-slate-500">{new Date(interview.scheduled_at).toLocaleString()} · {interview.mode.replace('_', ' ')}</span>
+                              {interview.meeting_link && <a className="text-blue-700 underline" href={interview.meeting_link} target="_blank" rel="noreferrer">Join interview</a>}
+                              {interview.location && <span className="block text-slate-500">{interview.location}</span>}
+                              <span className="block capitalize text-emerald-700">{interview.status}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </td>
+                    <td className="px-6 py-4 text-xs">
+                      {app.placement_result ? (
+                        <>
+                          <span className="font-semibold capitalize text-emerald-700">{app.placement_result.result_status}</span>
+                          {app.placement_result.package_amount !== null && <span className="block text-slate-600">Package: {Number(app.placement_result.package_amount).toLocaleString()}</span>}
+                          {app.placement_result.offer_date && <span className="block text-slate-500">Offer date: {new Date(app.placement_result.offer_date).toLocaleDateString()}</span>}
+                          {app.placement_result.notes && <span className="block text-slate-500">{app.placement_result.notes}</span>}
+                        </>
+                      ) : <span className="text-slate-400">No result recorded</span>}
                     </td>
                   </tr>
                 ))}

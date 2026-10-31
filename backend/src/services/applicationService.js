@@ -1,5 +1,6 @@
 const db = require('../config/db');
 const jobService = require('./jobService');
+const emailNotificationService = require('./emailNotificationService');
 
 class ApplicationService {
   /**
@@ -7,7 +8,7 @@ class ApplicationService {
    */
   async applyForJob(jobId, studentUserId) {
     // 1. Verify student exists
-    const studentRes = await db.query('SELECT id FROM students WHERE user_id = $1', [studentUserId]);
+    const studentRes = await db.query('SELECT id FROM students WHERE user_id = ?', [studentUserId]);
     if (studentRes.rowCount === 0) {
       const error = new Error('Student profile not found');
       error.status = 404;
@@ -17,7 +18,7 @@ class ApplicationService {
 
     // 2. Check if already applied (Rule 1 & DB Unique Constraint)
     const existingApp = await db.query(
-      'SELECT id, status FROM applications WHERE job_id = $1 AND student_id = $2',
+      'SELECT id, status FROM applications WHERE job_id = ? AND student_id = ?',
       [jobId, studentId]
     );
 
@@ -41,14 +42,27 @@ class ApplicationService {
     try {
       const res = await db.query(
         `INSERT INTO applications (job_id, student_id, status)
-         VALUES ($1, $2, 'applied')
-         RETURNING *`,
+         VALUES (?, ?, 'applied')
+         `,
         [jobId, studentId]
       );
 
-      return res.rows[0];
+      const application = await db.query(
+        `SELECT a.*, student_user.name AS student_name, student_user.email AS student_email,
+                recruiter_user.email AS recruiter_email, j.title AS job_title, c.company_name
+         FROM applications a
+         JOIN students s ON a.student_id = s.id
+         JOIN users student_user ON s.user_id = student_user.id
+         JOIN job_postings j ON a.job_id = j.id
+         JOIN companies c ON j.company_id = c.id
+         JOIN users recruiter_user ON c.recruiter_id = recruiter_user.id
+         WHERE a.id = ?`,
+        [res.insertId]
+      );
+      await emailNotificationService.sendApplicationSubmitted(application.rows[0]);
+      return application.rows[0];
     } catch (err) {
-      if (err.code === '23505') { // Postgres UNIQUE constraint violation code
+      if (err.code === 'ER_DUP_ENTRY') {
         const error = new Error('You have already applied for this job posting');
         error.status = 409;
         throw error;
@@ -72,26 +86,26 @@ class ApplicationService {
 
     const { minCgpa, department, graduation_year, status, skill } = filters;
     let queryValues = [jobId];
-    let whereClauses = [`a.job_id = $1`];
+    const whereClauses = ['a.job_id = ?'];
 
     if (minCgpa) {
       queryValues.push(parseFloat(minCgpa));
-      whereClauses.push(`s.cgpa >= $${queryValues.length}`);
+      whereClauses.push('s.cgpa >= ?');
     }
 
     if (department) {
       queryValues.push(`%${department}%`);
-      whereClauses.push(`s.department ILIKE $${queryValues.length}`);
+      whereClauses.push('LOWER(s.department) LIKE LOWER(?)');
     }
 
     if (graduation_year) {
       queryValues.push(parseInt(graduation_year, 10));
-      whereClauses.push(`s.graduation_year = $${queryValues.length}`);
+      whereClauses.push('s.graduation_year = ?');
     }
 
     if (status) {
       queryValues.push(status);
-      whereClauses.push(`a.status = $${queryValues.length}`);
+      whereClauses.push('a.status = ?');
     }
 
     const whereString = whereClauses.join(' AND ');
@@ -111,13 +125,13 @@ class ApplicationService {
         s.resume_url,
         u.name AS student_name,
         u.email AS student_email,
-        ARRAY_AGG(DISTINCT sk.skill_name) FILTER (WHERE sk.skill_name IS NOT NULL) AS student_skills
+        (SELECT JSON_ARRAYAGG(sk.skill_name)
+         FROM student_skills sk
+         WHERE sk.student_id = s.id) AS student_skills
       FROM applications a
       JOIN students s ON a.student_id = s.id
       JOIN users u ON s.user_id = u.id
-      LEFT JOIN student_skills sk ON s.id = sk.student_id
       WHERE ${whereString}
-      GROUP BY a.id, s.id, u.id
       ORDER BY a.applied_at DESC
     `;
 
@@ -156,11 +170,14 @@ class ApplicationService {
 
     // Verify application & job ownership
     const appRes = await db.query(
-      `SELECT a.*, j.company_id, c.recruiter_id
+      `SELECT a.*, j.company_id, j.title AS job_title, c.company_name, c.recruiter_id,
+              student_user.name AS student_name, student_user.email AS student_email
        FROM applications a
        JOIN job_postings j ON a.job_id = j.id
+       JOIN students s ON a.student_id = s.id
+       JOIN users student_user ON s.user_id = student_user.id
        JOIN companies c ON j.company_id = c.id
-       WHERE a.id = $1`,
+       WHERE a.id = ?`,
       [applicationId]
     );
 
@@ -178,16 +195,22 @@ class ApplicationService {
       throw error;
     }
 
-    const updateRes = await db.query(
+    await db.query(
       `UPDATE applications
-       SET status = $1,
+       SET status = ?,
            updated_at = CURRENT_TIMESTAMP
-       WHERE id = $2
-       RETURNING *`,
+       WHERE id = ?`,
       [newStatus, applicationId]
     );
 
-    return updateRes.rows[0];
+    const updatedApplication = await db.query('SELECT * FROM applications WHERE id = ?', [applicationId]);
+    if (application.status !== newStatus) {
+      await emailNotificationService.sendApplicationStatus({
+        ...application,
+        status: newStatus
+      });
+    }
+    return updatedApplication.rows[0];
   }
 }
 

@@ -109,7 +109,7 @@ const LandingPage = () => {
 
       {/* Footer */}
       <footer className="bg-white border-t border-slate-200 py-6 text-center text-xs text-slate-500">
-        <p>© 2026 Placement Hub — Full-Stack Placement Management Platform (Node.js, Express, PostgreSQL, React)</p>
+        <p>© 2026 Placemate — Student Placement Management System (React, Node.js, Express, MySQL)</p>
       </footer>
     </div>
   );

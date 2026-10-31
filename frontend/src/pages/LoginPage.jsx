@@ -1,19 +1,68 @@
 import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import {
+  AlertCircle,
+  ArrowRight,
+  BriefcaseBusiness,
+  Eye,
+  EyeOff,
+  FileCheck2,
+  GraduationCap,
+  LockKeyhole,
+  Mail,
+  ShieldCheck,
+  Users
+} from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { GraduationCap, Lock, Mail, AlertCircle, ArrowRight, UserCheck, Shield } from 'lucide-react';
+import AuthShell from '../components/AuthShell';
+
+const features = [
+  { title: 'Discover job opportunities', icon: BriefcaseBusiness },
+  { title: 'Track your applications', icon: FileCheck2 },
+  { title: 'Connect with recruiters', icon: Users }
+];
+
+const demoAccounts = [
+  {
+    role: 'Student',
+    icon: GraduationCap,
+    email: import.meta.env.VITE_DEMO_STUDENT_EMAIL,
+    password: import.meta.env.VITE_DEMO_STUDENT_PASSWORD,
+    styles: 'border-blue-200 bg-blue-50 text-blue-700 hover:border-blue-300',
+    selectedStyles: 'border-blue-500 bg-blue-100 text-blue-800 ring-2 ring-blue-200'
+  },
+  {
+    role: 'Recruiter',
+    icon: BriefcaseBusiness,
+    email: import.meta.env.VITE_DEMO_RECRUITER_EMAIL,
+    password: import.meta.env.VITE_DEMO_RECRUITER_PASSWORD,
+    styles: 'border-emerald-200 bg-emerald-50 text-emerald-700 hover:border-emerald-300',
+    selectedStyles: 'border-emerald-500 bg-emerald-100 text-emerald-800 ring-2 ring-emerald-200'
+  },
+  {
+    role: 'Admin',
+    icon: ShieldCheck,
+    email: import.meta.env.VITE_DEMO_ADMIN_EMAIL,
+    password: import.meta.env.VITE_DEMO_ADMIN_PASSWORD,
+    styles: 'border-violet-200 bg-violet-50 text-violet-700 hover:border-violet-300',
+    selectedStyles: 'border-violet-500 bg-violet-100 text-violet-800 ring-2 ring-violet-200'
+  }
+];
 
 const LoginPage = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
+  const [selectedDemo, setSelectedDemo] = useState('');
+  const [demoMessage, setDemoMessage] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
   const { login } = useAuth();
   const navigate = useNavigate();
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const handleSubmit = async (event) => {
+    event.preventDefault();
     setError('');
     setSubmitting(true);
 
@@ -23,120 +72,137 @@ const LoginPage = () => {
       else if (user.role === 'recruiter') navigate('/recruiter/dashboard');
       else if (user.role === 'admin') navigate('/admin/dashboard');
       else navigate('/');
-    } catch (err) {
-      console.error('Login error details:', err);
-      setError(err.response?.data?.message || err.message || 'Login failed. Please check your credentials.');
+    } catch (requestError) {
+      console.error('Login error details:', requestError);
+      setError(requestError.response?.data?.message || requestError.message || 'Login failed. Please check your credentials.');
     } finally {
       setSubmitting(false);
     }
   };
 
-  const fillDemo = (demoEmail, demoPassword) => {
+  const selectDemo = ({ role, email: demoEmail, password: demoPassword }) => {
+    setSelectedDemo(role);
+    setError('');
+    if (!demoEmail || !demoPassword) {
+      setDemoMessage('');
+      return;
+    }
+
     setEmail(demoEmail);
     setPassword(demoPassword);
-    setError('');
+    setDemoMessage(`${role} demo credentials are filled in. Review them, then select Sign in.`);
   };
 
+  const inputClass = 'block h-11 w-full rounded-lg border border-slate-300 bg-white pl-10 pr-4 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-100';
+
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
-      <div className="sm:mx-auto sm:w-full sm:max-w-md text-center">
-        <div className="inline-flex items-center justify-center p-3 bg-blue-600 text-white rounded-2xl shadow-md mb-4">
-          <GraduationCap className="w-8 h-8" />
-        </div>
-        <h2 className="text-3xl font-extrabold text-slate-900 tracking-tight">Sign in to your account</h2>
-        <p className="mt-2 text-sm text-slate-600">
-          Or{' '}
-          <Link to="/register" className="font-semibold text-blue-600 hover:text-blue-500">
-            register a new account
-          </Link>
-        </p>
+    <AuthShell
+      title="Welcome Back!"
+      subtitle="Your journey towards a successful career starts here."
+      features={features}
+    >
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight text-slate-900">Sign in to your account</h1>
+        <p className="mt-1.5 text-sm text-slate-500">Enter your credentials to continue.</p>
       </div>
 
-      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="bg-white py-8 px-4 shadow-sm border border-slate-200 sm:rounded-2xl sm:px-10">
-          {error && (
-            <div className="mb-6 p-4 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm flex items-start gap-3">
-              <AlertCircle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
-              <span>{error}</span>
-            </div>
-          )}
+      {error && (
+        <div role="alert" className="mt-5 flex items-start gap-2.5 rounded-lg border border-red-200 bg-red-50 px-3.5 py-3 text-sm text-red-800">
+          <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-red-600" />
+          <div><p className="font-bold">Unable to sign in</p><p className="mt-0.5 leading-5">{error}</p></div>
+        </div>
+      )}
 
-          <form className="space-y-5" onSubmit={handleSubmit}>
-            <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-1">Email Address</label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
-                  <Mail className="w-5 h-5" />
-                </div>
-                <input
-                  type="email"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="name@example.com"
-                  className="block w-full pl-10 pr-3 py-2.5 border border-slate-300 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent text-sm"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-1">Password</label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
-                  <Lock className="w-5 h-5" />
-                </div>
-                <input
-                  type="password"
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
-                  className="block w-full pl-10 pr-3 py-2.5 border border-slate-300 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent text-sm"
-                />
-              </div>
-            </div>
-
-            <button
-              type="submit"
-              disabled={submitting}
-              className="w-full flex justify-center items-center gap-2 py-3 px-4 border border-transparent rounded-xl shadow-sm text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 transition-colors"
-            >
-              {submitting ? 'Signing in...' : 'Sign In'} <ArrowRight className="w-4 h-4" />
-            </button>
-          </form>
-
-          {/* Demo Credentials Quick Fill Buttons */}
-          <div className="mt-8 pt-6 border-t border-slate-200">
-            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider text-center mb-3">
-              ⚡ Quick Demo Credentials (Click to Autofill)
-            </p>
-            <div className="grid grid-cols-3 gap-2">
-              <button
-                type="button"
-                onClick={() => fillDemo('student@example.com', 'Password123')}
-                className="px-2 py-2 text-xs font-semibold rounded-lg border border-slate-200 bg-slate-50 hover:bg-blue-50 hover:border-blue-300 text-slate-700 transition-colors"
-              >
-                🎓 Student
-              </button>
-              <button
-                type="button"
-                onClick={() => fillDemo('recruiter@example.com', 'Password123')}
-                className="px-2 py-2 text-xs font-semibold rounded-lg border border-slate-200 bg-slate-50 hover:bg-blue-50 hover:border-blue-300 text-slate-700 transition-colors"
-              >
-                🏢 Recruiter
-              </button>
-              <button
-                type="button"
-                onClick={() => fillDemo('admin@example.com', 'Password123')}
-                className="px-2 py-2 text-xs font-semibold rounded-lg border border-slate-200 bg-slate-50 hover:bg-blue-50 hover:border-blue-300 text-slate-700 transition-colors"
-              >
-                ⚙️ Admin
-              </button>
-            </div>
+      <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
+        <div>
+          <label htmlFor="login-email" className="mb-1.5 block text-sm font-medium text-slate-700">Email address</label>
+          <div className="relative">
+            <Mail className="pointer-events-none absolute left-3 top-3.5 h-4 w-4 text-slate-400" />
+            <input
+              id="login-email"
+              type="email"
+              autoComplete="email"
+              required
+              value={email}
+              onChange={event => setEmail(event.target.value)}
+              placeholder="you@example.com"
+              className={inputClass}
+            />
           </div>
         </div>
+
+        <div>
+          <div className="mb-2 flex items-center justify-between">
+            <label htmlFor="login-password" className="block text-sm font-medium text-slate-700">Password</label>
+          </div>
+          <div className="relative">
+            <LockKeyhole className="pointer-events-none absolute left-3 top-3.5 h-4 w-4 text-slate-400" />
+            <input
+              id="login-password"
+              type={showPassword ? 'text' : 'password'}
+              autoComplete="current-password"
+              required
+              value={password}
+              onChange={event => setPassword(event.target.value)}
+              placeholder="Enter your password"
+              className={`${inputClass} pr-12`}
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword(value => !value)}
+              aria-label={showPassword ? 'Hide password' : 'Show password'}
+              className="absolute right-2.5 top-2.5 rounded-md p-1 text-slate-400 transition hover:text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+            </button>
+          </div>
+        </div>
+
+        <button
+          type="submit"
+          disabled={submitting}
+          className="group flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-300 focus:ring-offset-1 disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          {submitting ? 'Signing in…' : 'Sign in'}
+          {!submitting && <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />}
+        </button>
+      </form>
+
+      <div className="mt-6 flex items-center gap-3">
+        <span className="h-px flex-1 bg-slate-200" />
+        <span className="whitespace-nowrap text-[10px] font-bold tracking-[0.12em] text-slate-400">OR TRY A DEMO ACCOUNT</span>
+        <span className="h-px flex-1 bg-slate-200" />
       </div>
-    </div>
+      <div className="mt-4 grid grid-cols-3 gap-2.5">
+        {demoAccounts.map(account => {
+          const Icon = account.icon;
+          const isSelected = selectedDemo === account.role;
+          return (
+            <button
+              key={account.role}
+              type="button"
+              onClick={() => selectDemo(account)}
+              aria-pressed={isSelected}
+              className={`flex min-h-12 items-center justify-center gap-1.5 rounded-lg border px-2 py-2 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-blue-300 ${
+                isSelected ? account.selectedStyles : account.styles
+              }`}
+            >
+              <Icon className="h-4 w-4 shrink-0" />
+              <span>{account.role}</span>
+            </button>
+          );
+        })}
+      </div>
+      {demoMessage && (
+        <p role="status" className="mt-3 rounded-lg bg-slate-50 px-3 py-2 text-xs leading-5 text-slate-600">
+          {demoMessage}
+        </p>
+      )}
+      <p className="mt-5 text-center text-sm text-slate-500">
+        New to Placemate?{' '}
+        <Link to="/register" className="font-semibold text-blue-700 transition hover:text-blue-900">Create an account</Link>
+      </p>
+    </AuthShell>
   );
 };
 
