@@ -22,20 +22,22 @@ const features = [
   { title: 'Connect with recruiters', icon: Users }
 ];
 
+const DEMO_SEED_PASSWORD = 'Password123';
+
 const demoAccounts = [
   {
     role: 'Student',
     icon: GraduationCap,
-    email: import.meta.env.VITE_DEMO_STUDENT_EMAIL,
-    password: import.meta.env.VITE_DEMO_STUDENT_PASSWORD,
+    email: import.meta.env.VITE_DEMO_STUDENT_EMAIL || 'student@example.com',
+    password: import.meta.env.VITE_DEMO_STUDENT_PASSWORD || DEMO_SEED_PASSWORD,
     styles: 'border-blue-200 bg-blue-50 text-blue-700 hover:border-blue-300',
     selectedStyles: 'border-blue-500 bg-blue-100 text-blue-800 ring-2 ring-blue-200'
   },
   {
     role: 'Recruiter',
     icon: BriefcaseBusiness,
-    email: import.meta.env.VITE_DEMO_RECRUITER_EMAIL,
-    password: import.meta.env.VITE_DEMO_RECRUITER_PASSWORD,
+    email: import.meta.env.VITE_DEMO_RECRUITER_EMAIL || 'recruiter@example.com',
+    password: import.meta.env.VITE_DEMO_RECRUITER_PASSWORD || DEMO_SEED_PASSWORD,
     styles: 'border-emerald-200 bg-emerald-50 text-emerald-700 hover:border-emerald-300',
     selectedStyles: 'border-emerald-500 bg-emerald-100 text-emerald-800 ring-2 ring-emerald-200'
   },
@@ -84,7 +86,7 @@ const LoginPage = () => {
     setSelectedDemo(role);
     setError('');
     if (!demoEmail || !demoPassword) {
-      setDemoMessage('');
+      setDemoMessage(`${role} demo login is not configured. Set its VITE_DEMO_${role.toUpperCase()}_EMAIL and VITE_DEMO_${role.toUpperCase()}_PASSWORD in Vercel, then redeploy.`);
       return;
     }
 
