@@ -4,16 +4,16 @@
 -- Recruiter: recruiter@example.com / Password123
 -- Student: student@example.com / Password123
 
--- Clear existing data
-SET FOREIGN_KEY_CHECKS = 0;
-TRUNCATE TABLE applications;
-TRUNCATE TABLE job_required_skills;
-TRUNCATE TABLE job_postings;
-TRUNCATE TABLE companies;
-TRUNCATE TABLE student_skills;
-TRUNCATE TABLE students;
-TRUNCATE TABLE users;
-SET FOREIGN_KEY_CHECKS = 1;
+-- -- Clear existing data
+-- SET FOREIGN_KEY_CHECKS = 0;
+-- TRUNCATE TABLE applications;
+-- TRUNCATE TABLE job_required_skills;
+-- TRUNCATE TABLE job_postings;
+-- TRUNCATE TABLE companies;
+-- TRUNCATE TABLE student_skills;
+-- TRUNCATE TABLE students;
+-- TRUNCATE TABLE users;
+-- SET FOREIGN_KEY_CHECKS = 1;
 
 -- Hash for 'Password123': $2a$10$vvfjWbKo3hHWUjEuztwhCu0c.1CQMZIbzgrHUXgoQLTmqxeC3dNX6
 

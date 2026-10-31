@@ -1,15 +1,15 @@
 -- Placemate MySQL Schema
 -- MySQL DDL Script
 
-DROP TABLE IF EXISTS placement_results;
-DROP TABLE IF EXISTS interview_schedules;
-DROP TABLE IF EXISTS applications;
-DROP TABLE IF EXISTS job_required_skills;
-DROP TABLE IF EXISTS job_postings;
-DROP TABLE IF EXISTS companies;
-DROP TABLE IF EXISTS student_skills;
-DROP TABLE IF EXISTS students;
-DROP TABLE IF EXISTS users;
+-- DROP TABLE IF EXISTS placement_results;
+-- DROP TABLE IF EXISTS interview_schedules;
+-- DROP TABLE IF EXISTS applications;
+-- DROP TABLE IF EXISTS job_required_skills;
+-- DROP TABLE IF EXISTS job_postings;
+-- DROP TABLE IF EXISTS companies;
+-- DROP TABLE IF EXISTS student_skills;
+-- DROP TABLE IF EXISTS students;
+-- DROP TABLE IF EXISTS users;
 
 CREATE TABLE users (
     id INT AUTO_INCREMENT PRIMARY KEY,
