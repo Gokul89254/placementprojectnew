@@ -88,6 +88,38 @@ const formatDate = value => {
   return Number.isNaN(date.getTime()) ? String(value).slice(0, 10) : date.toLocaleDateString();
 };
 
+const getLegacyDashboardRecords = async (section) => {
+  const endpointBySection = {
+    students: '/admin/students',
+    companies: '/admin/companies',
+    jobs: '/admin/jobs',
+    applications: '/admin/applications',
+    'pending-applications': '/admin/applications',
+    'shortlisted-applications': '/admin/applications',
+    'selected-students': '/admin/applications'
+  };
+  const response = await API.get(endpointBySection[section]);
+  const data = response.data.data;
+
+  if (section === 'students') return data.students;
+  if (section === 'companies') return data.companies;
+  if (section === 'jobs') return data.jobs;
+  if (section === 'applications') return data.applications;
+
+  const statusBySection = {
+    'pending-applications': 'applied',
+    'shortlisted-applications': 'shortlisted',
+    'selected-students': 'selected'
+  };
+  const status = statusBySection[section];
+  return data.applications
+    .filter(application => application.status === status)
+    .map(application => ({
+      ...application,
+      selection_date: status === 'selected' ? application.updated_at : null
+    }));
+};
+
 const AdminDashboard = () => {
   const [metrics, setMetrics] = useState(null);
   const [jobs, setJobs] = useState([]);
@@ -127,10 +159,19 @@ const AdminDashboard = () => {
     setSectionError('');
     setSectionRecords([]);
     try {
-      const response = await API.get(`/admin/dashboard/records/${section}`);
-      setSectionRecords(response.data.data.records);
+      try {
+        const response = await API.get(`/admin/dashboard/records/${section}`);
+        setSectionRecords(response.data.data.records);
+      } catch (err) {
+        if (err.response?.status !== 404) throw err;
+        setSectionRecords(await getLegacyDashboardRecords(section));
+      }
     } catch (err) {
-      setSectionError(err.response?.data?.message || 'Unable to load these records. Please retry.');
+      setSectionError(
+        err.response?.data?.message
+        || (err.response ? `Request failed (${err.response.status}). Please retry.` : err.message)
+        || 'Unable to load these records. Please retry.'
+      );
     } finally {
       setSectionLoading(false);
     }
